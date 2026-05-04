@@ -1,6 +1,5 @@
 /**
- * HomeScreen - 首頁歡迎畫面
- * Welcome screen with app introduction
+ * HomeScreen - 升級版首頁 (App Store 質感)
  */
 
 import React from 'react';
@@ -11,68 +10,62 @@ import {
   TouchableOpacity,
   Dimensions,
   ImageBackground,
+  StatusBar
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons'; // 👈 同樣導入專業向量圖示
 
 const { width, height } = Dimensions.get('window');
 
 export default function HomeScreen({ navigation }) {
   return (
     <ImageBackground
-      source={{ uri: 'https://images.unsplash.com/photo-1524661135-423995f22d0b?w=800' }}
+      // 換上一張絕美的台北 101 夜景照
+      source={{ uri: 'https://images.unsplash.com/photo-1583339522861-26c792194b5e?q=80&w=1080&auto=format&fit=crop' }}
       style={styles.background}
-      blurRadius={3}
     >
+      <StatusBar barStyle="light-content" />
+      
+      {/* 科技感深色遮罩 */}
       <View style={styles.overlay}>
-        <View style={styles.content}>
-          {/* Logo */}
-          <Text style={styles.logo}>🗺️</Text>
+
+        {/* 頂部：Logo 與標題區塊 */}
+        <View style={styles.topSection}>
+          <View style={styles.logoContainer}>
+            <Ionicons name="cube-outline" size={56} color="#4A90E2" />
+          </View>
           
-          {/* Title */}
           <Text style={styles.title}>Taipei Digital Twin</Text>
           <Text style={styles.subtitle}>台北數位孿生</Text>
           
-          {/* Description */}
           <Text style={styles.description}>
-            Explore Taipei like never before with immersive 3D maps,
-            AI-powered recommendations, and historical insights
+            Your ultimate 3D guide to Taipei. Discover upcoming events, track real-time transit, and navigate the city with ease.
           </Text>
-          
-          {/* Features */}
-          <View style={styles.features}>
-            <View style={styles.feature}>
-              <Text style={styles.featureIcon}>🏙️</Text>
-              <Text style={styles.featureText}>3D Real Map</Text>
-            </View>
-            <View style={styles.feature}>
-              <Text style={styles.featureIcon}>🎯</Text>
-              <Text style={styles.featureText}>Tinder-style Events</Text>
-            </View>
-            <View style={styles.feature}>
-              <Text style={styles.featureIcon}>🏛️</Text>
-              <Text style={styles.featureText}>Historical Sites</Text>
-            </View>
-            <View style={styles.feature}>
-              <Text style={styles.featureIcon}>🎤</Text>
-              <Text style={styles.featureText}>Voice Guide</Text>
-            </View>
-          </View>
-          
-          {/* Start Button */}
+        </View>
+
+        {/* 底部：操作按鈕區塊 */}
+        <View style={styles.bottomSection}>
+          {/* 發光的主按鈕 (CTA) */}
           <TouchableOpacity
-            style={styles.startButton}
+            style={styles.primaryButton}
+            activeOpacity={0.8}
             onPress={() => navigation.navigate('Map')}
           >
-            <Text style={styles.startButtonText}>Start Exploring</Text>
+            <Ionicons name="map" size={20} color="white" style={styles.buttonIcon} />
+            <Text style={styles.primaryButtonText}>Start Exploring</Text>
           </TouchableOpacity>
           
-          {/* Secondary Button */}
+          {/* 極簡文字連結 */}
           <TouchableOpacity
-            style={styles.eventsButton}
+            style={styles.secondaryButton}
+            activeOpacity={0.6}
             onPress={() => navigation.navigate('Events')}
           >
-            <Text style={styles.eventsButtonText}>Browse Events</Text>
+            <Text style={styles.secondaryButtonText}>
+              Or browse upcoming events <Ionicons name="arrow-forward" size={14} />
+            </Text>
           </TouchableOpacity>
         </View>
+
       </View>
     </ImageBackground>
   );
@@ -86,87 +79,85 @@ const styles = StyleSheet.create({
   },
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(26, 26, 46, 0.85)',
+    backgroundColor: 'rgba(15, 23, 42, 0.85)', // 深石板藍遮罩，比純黑更有層次
+    justifyContent: 'space-between',
+    paddingHorizontal: 30,
+    paddingTop: 120,
+    paddingBottom: 60,
+  },
+  topSection: {
+    alignItems: 'center',
+  },
+  logoContainer: {
+    width: 100,
+    height: 100,
+    borderRadius: 30,
+    backgroundColor: 'rgba(74, 144, 226, 0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(74, 144, 226, 0.3)',
+    alignItems: 'center',
     justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-  },
-  content: {
-    alignItems: 'center',
-    maxWidth: 400,
-  },
-  logo: {
-    fontSize: 80,
-    marginBottom: 20,
+    marginBottom: 30,
   },
   title: {
     fontSize: 36,
-    fontWeight: 'bold',
+    fontWeight: '900',
     color: 'white',
-    marginBottom: 8,
+    letterSpacing: 0.5,
     textAlign: 'center',
+    marginBottom: 8,
   },
   subtitle: {
     fontSize: 20,
-    color: '#94a3b8',
-    marginBottom: 30,
+    fontWeight: '600',
+    color: '#4A90E2',
+    letterSpacing: 4, // 加大字距，增加精品感
+    marginBottom: 40,
   },
   description: {
     fontSize: 16,
-    color: '#cbd5e0',
+    color: '#94A3B8',
     textAlign: 'center',
-    lineHeight: 24,
-    marginBottom: 40,
+    lineHeight: 26,
+    fontWeight: '500',
   },
-  features: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'center',
-    gap: 15,
-    marginBottom: 40,
-  },
-  feature: {
+  bottomSection: {
+    width: '100%',
     alignItems: 'center',
-    width: 100,
   },
-  featureIcon: {
-    fontSize: 32,
-    marginBottom: 8,
-  },
-  featureText: {
-    color: 'white',
-    fontSize: 12,
-    textAlign: 'center',
-  },
-  startButton: {
-    backgroundColor: '#3b82f6',
-    paddingHorizontal: 40,
-    paddingVertical: 16,
-    borderRadius: 30,
-    marginBottom: 15,
+  primaryButton: {
+    flexDirection: 'row',
+    backgroundColor: '#4A90E2',
     width: '100%',
-    maxWidth: 300,
+    height: 60,
+    borderRadius: 30,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 24,
+    // 霓虹發光陰影效果
+    shadowColor: '#4A90E2',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.5,
+    shadowRadius: 15,
+    elevation: 10,
   },
-  startButtonText: {
+  buttonIcon: {
+    marginRight: 10,
+  },
+  primaryButtonText: {
     color: 'white',
     fontSize: 18,
-    fontWeight: 'bold',
-    textAlign: 'center',
+    fontWeight: '800',
+    letterSpacing: 1,
   },
-  eventsButton: {
-    backgroundColor: 'transparent',
-    borderWidth: 2,
-    borderColor: '#3b82f6',
-    paddingHorizontal: 40,
-    paddingVertical: 16,
-    borderRadius: 30,
-    width: '100%',
-    maxWidth: 300,
+  secondaryButton: {
+    paddingVertical: 10,
+    paddingHorizontal: 20,
   },
-  eventsButtonText: {
-    color: '#3b82f6',
-    fontSize: 18,
-    fontWeight: 'bold',
-    textAlign: 'center',
+  secondaryButtonText: {
+    color: '#94A3B8',
+    fontSize: 15,
+    fontWeight: '600',
+    letterSpacing: 0.5,
   },
 });
