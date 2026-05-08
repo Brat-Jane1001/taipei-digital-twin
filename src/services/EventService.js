@@ -1,183 +1,121 @@
 /**
  * EventService - 活動資料服務
- * Event data service
+ * 從後端 API 取得真實資料
  */
 
-import LocationService from './LocationService.js';
+import LocationService from './LocationService';
 
-const MOCK_EVENTS = [
-  {
-    id: 'evt_001',
-    title: '🎬 Ximending Film District',
-    description: 'The heart of Taipei youth culture. Explore retro cinemas, street performers, and unique shops.',
-    location: 'Red House, Ximending',
-    lat: 25.0421,
-    lng: 121.5067,
-    time: 'Daily, Open all day',
-    tags: ['culture', 'art'],
-    image: 'https://images.unsplash.com/photo-1518998053901-5348d3961a04?w=800',
-  },
-  {
-    id: 'evt_002',
-    title: '🍢 Ximending Street Food',
-    description: 'Famous stinky tofu, bubble tea, and grilled skewers along Wuchang Street.',
-    location: 'Wuchang St, Ximending',
-    lat: 25.0435,
-    lng: 121.5078,
-    time: 'Daily, 11:00 AM - 11:00 PM',
-    tags: ['food', 'nightlife'],
-    image: 'https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=800',
-  },
-  {
-    id: 'evt_003',
-    title: '🎨 Red House Theater',
-    description: 'Historic Japanese-era building now housing indie designers, artists, and weekend markets.',
-    location: 'Red House, Ximending',
-    lat: 25.0418,
-    lng: 121.5063,
-    time: 'Tue-Sun, 11:00 AM - 9:30 PM',
-    tags: ['art', 'culture', 'history'],
-    image: 'https://images.unsplash.com/photo-1460661419201-fd4cecdf8a8b?w=800',
-  },
-  {
-    id: 'evt_004',
-    title: '🧋 Chun Shui Tang',
-    description: 'The original bubble tea shop. Try the classic tapioca milk tea that started it all.',
-    location: 'Zhonghua Rd, Ximending',
-    lat: 25.0441,
-    lng: 121.5055,
-    time: 'Daily, 10:00 AM - 10:00 PM',
-    tags: ['food'],
-    image: 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=800',
-  },
-  {
-    id: 'evt_005',
-    title: '🎵 Street Performance Area',
-    description: 'Live music, breakdancers, and street artists perform every weekend evening.',
-    location: 'Pedestrian Zone, Ximending',
-    lat: 25.0428,
-    lng: 121.5072,
-    time: 'Weekends, 6:00 PM - 10:00 PM',
-    tags: ['music', 'culture'],
-    image: 'https://images.unsplash.com/photo-1511192336575-5a79af67a629?w=800',
-  },
-  {
-    id: 'evt_006',
-    title: '👟 Sneaker Street',
-    description: 'Dozens of shops selling limited edition sneakers, streetwear, and vintage clothing.',
-    location: 'Xining S. Rd, Ximending',
-    lat: 25.0415,
-    lng: 121.5058,
-    time: 'Daily, 12:00 PM - 9:00 PM',
-    tags: ['culture'],
-    image: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=800',
-  },
-];
+// ===== 部署後換成你的 Render URL =====
+// 本機測試用：'http://你電腦的IP:3000'
+// 部署後用：'https://你的專案名稱.onrender.com'
+const API_BASE = 'https://taipei-backend-ib04.onrender.com';
 
 class EventService {
-  /**
-   * 取得所有活動
-   */
+
   async getAllEvents() {
-    // 模擬API延遲
-    await this.delay(500);
-    return MOCK_EVENTS;
+    try {
+      const res  = await fetch(`${API_BASE}/api/events?active=true`);
+      const json = await res.json();
+      return json.data || [];
+    } catch (e) {
+      console.error('EventService.getAllEvents error:', e);
+      return FALLBACK_EVENTS; // 網路失敗時用備用資料
+    }
   }
 
-  /**
-   * 取得附近活動
-   */
   async getNearbyEvents(latitude, longitude, radiusKm = 10) {
-    const allEvents = await this.getAllEvents();
-    
-    // 計算距離並過濾
-    const nearbyEvents = allEvents
-      .map(event => ({
-        ...event,
-        distance: LocationService.calculateDistance(
-          latitude,
-          longitude,
-          event.lat,
-          event.lng
-        ),
+    const all = await this.getAllEvents();
+    return all
+      .map(ev => ({
+        ...ev,
+        distance: LocationService.calculateDistance(latitude, longitude, ev.lat, ev.lng),
       }))
-      .filter(event => event.distance <= radiusKm)
-      .sort((a, b) => a.distance - b.distance); // 按距離排序
-
-    return nearbyEvents;
+      .filter(ev => ev.distance <= radiusKm)
+      .sort((a, b) => a.distance - b.distance);
   }
 
-  /**
-   * 根據標籤過濾活動
-   */
   async getEventsByTags(tags) {
-    const allEvents = await this.getAllEvents();
-    
-    return allEvents.filter(event =>
-      event.tags.some(tag => tags.includes(tag))
-    );
+    const all = await this.getAllEvents();
+    return all.filter(ev => ev.tags?.some(t => tags.includes(t)));
   }
 
-  /**
-   * 取得單一活動詳情
-   */
   async getEventById(id) {
-    const allEvents = await this.getAllEvents();
-    return allEvents.find(event => event.id === id);
+    try {
+      const res  = await fetch(`${API_BASE}/api/events/${id}`);
+      const json = await res.json();
+      return json.data || null;
+    } catch (e) {
+      const all = await this.getAllEvents();
+      return all.find(ev => ev.id === id);
+    }
   }
 
-  /**
-   * AI推薦活動（基於使用者偏好）
-   */
-  async getRecommendedEvents(userPreferences, userLocation) {
-    const allEvents = await this.getAllEvents();
-    
-    // 計算每個活動的推薦分數
-    const scoredEvents = allEvents.map(event => {
-      let score = 0;
-      
-      // 1. 標籤匹配度（50%權重）
-      const matchingTags = event.tags.filter(tag => 
-        userPreferences.interests?.includes(tag)
-      );
-      const tagScore = matchingTags.length / Math.max(event.tags.length, 1);
-      score += tagScore * 0.5;
-      
-      // 2. 地理距離（30%權重）
-      if (userLocation) {
-        const distance = LocationService.calculateDistance(
-          userLocation.latitude,
-          userLocation.longitude,
-          event.lat,
-          event.lng
-        );
-        const geoScore = Math.max(0, 1 - distance / 10); // 10公里內
-        score += geoScore * 0.3;
-      }
-      
-      // 3. 時間緊急度（20%權重）
-      // 這裡簡化，實際應該解析event.time
-      const timeScore = 0.8;
-      score += timeScore * 0.2;
-      
-      return {
-        ...event,
-        recommendationScore: score,
-      };
+  async createEvent(eventData) {
+    const res  = await fetch(`${API_BASE}/api/events`, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify(eventData),
     });
-    
-    // 排序並返回
-    return scoredEvents
+    return res.json();
+  }
+
+  async updateEvent(id, eventData) {
+    const res = await fetch(`${API_BASE}/api/events/${id}`, {
+      method:  'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify(eventData),
+    });
+    return res.json();
+  }
+
+  async deleteEvent(id) {
+    const res = await fetch(`${API_BASE}/api/events/${id}`, {
+      method: 'DELETE',
+    });
+    return res.json();
+  }
+
+  async toggleEvent(id) {
+    const res = await fetch(`${API_BASE}/api/events/${id}/toggle`, {
+      method: 'PATCH',
+    });
+    return res.json();
+  }
+
+  async getRecommendedEvents(userPreferences, userLocation) {
+    const all = await this.getAllEvents();
+    return all
+      .map(ev => {
+        let score = 0;
+        const matching = ev.tags?.filter(t => userPreferences.interests?.includes(t)) || [];
+        score += (matching.length / Math.max(ev.tags?.length || 1, 1)) * 0.5;
+        if (userLocation) {
+          const dist = LocationService.calculateDistance(
+            userLocation.latitude, userLocation.longitude, ev.lat, ev.lng
+          );
+          score += Math.max(0, 1 - dist / 10) * 0.3;
+        }
+        score += 0.8 * 0.2;
+        return { ...ev, recommendationScore: score };
+      })
       .sort((a, b) => b.recommendationScore - a.recommendationScore)
       .slice(0, 10);
   }
-
-  /**
-   * 工具函數：延遲
-   */
-  delay(ms) {
-    return new Promise(resolve => setTimeout(resolve, ms));
-  }
 }
+
+// 網路失敗備用資料
+const FALLBACK_EVENTS = [
+  {
+    id: 'evt_001',
+    title: '🎬 Ximending Film District',
+    description: 'The heart of Taipei youth culture.',
+    location: 'Red House, Ximending',
+    lat: 25.0421, lng: 121.5067,
+    time: 'Daily, Open all day',
+    tags: ['culture', 'art'],
+    image: 'https://images.unsplash.com/photo-1518998053901-5348d3961a04?w=800',
+    active: true,
+  },
+];
 
 export default new EventService();
