@@ -16,10 +16,14 @@ class EventService {
     try {
       const res  = await fetch(`${API_BASE}/api/events?active=true`);
       const json = await res.json();
-      return json.data || [];
+      // 如果後端有資料就用後端的，若後端是空的 []，就無縫採用你精美的本地卡片資料！
+      if (json.data && json.data.length > 0) {
+        return json.data;
+      }
+      return FALLBACK_EVENTS;
     } catch (e) {
       console.error('EventService.getAllEvents error:', e);
-      return FALLBACK_EVENTS; // 網路失敗時用備用資料
+      return FALLBACK_EVENTS; 
     }
   }
 
@@ -108,7 +112,7 @@ const FALLBACK_EVENTS = [
   {
     id: 'evt_001',
     title: '🎬 Ximending Film District',
-    description: 'The heart of Taipei youth culture.',
+    description: 'The heart of Taipei youth culture. Explore retro cinemas, street performers, and unique shops.',
     location: 'Red House, Ximending',
     lat: 25.0421, lng: 121.5067,
     time: 'Daily, Open all day',
@@ -116,6 +120,60 @@ const FALLBACK_EVENTS = [
     image: 'https://images.unsplash.com/photo-1518998053901-5348d3961a04?w=800',
     active: true,
   },
+  {
+    id: 'evt_002',
+    title: '🍜 Ximending Street Food',
+    description: 'Famous stinky tofu, bubble tea, and grilled skewers along Wuchang Street.',
+    location: 'Wuchang St, Ximending',
+    lat: 25.0440, lng: 121.5050,
+    time: 'Daily, 11:00 AM - 11:00 PM',
+    tags: ['food', 'nightlife'],
+    image: 'https://images.unsplash.com/photo-1563245372-f21724e3856d?w=800',
+    active: true,
+  },
+  {
+    id: 'evt_003',
+    title: '🎨 Red House Theater',
+    description: 'Historic Japanese-era building now housing indie designers, artists, and weekend markets.',
+    location: 'Red House, Ximending',
+    lat: 25.0411, lng: 121.5065,
+    time: 'Tue-Sun, 11:00 AM - 9:30 PM',
+    tags: ['art', 'culture'],
+    image: 'https://images.unsplash.com/photo-1501386761578-eac5c94b800a?w=800',
+    active: true,
+  },
+  {
+    id: 'evt_004',
+    title: '👟 Sneaker Street',
+    description: 'The ultimate destination for sneakerheads in Taipei with limited editions.',
+    location: 'Xining S. Rd, Ximending',
+    lat: 25.0432, lng: 121.5055,
+    time: 'Daily, 12:00 PM - 9:00 PM',
+    tags: ['culture'],
+    image: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=800',
+    active: true,
+  },
+  {
+    id: 'evt_005',
+    title: '🧋 Chun Shui Tang',
+    description: 'Originator of bubble milk tea, serving premium tea and traditional Taiwanese dishes.',
+    location: 'Zhonghua Rd, Ximending',
+    lat: 25.0418, lng: 121.5088,
+    time: 'Daily, 10:00 AM - 10:00 PM',
+    tags: ['food'],
+    image: 'https://images.unsplash.com/photo-1541658016709-82535e94bc69?w=800',
+    active: true,
+  },
+  {
+    id: 'evt_006',
+    title: '🎵 Street Performance Area',
+    description: 'Watch talented local musicians, dancers, and magicians showcase their skills.',
+    location: 'Pedestrian Zone, Ximending',
+    lat: 25.0425, lng: 121.5060,
+    time: 'Weekends, 6:00 PM - 10:00 PM',
+    tags: ['music', 'culture'],
+    image: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=800',
+    active: true,
+  }
 ];
-
 export default new EventService();
