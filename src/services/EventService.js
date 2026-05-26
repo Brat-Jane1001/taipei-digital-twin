@@ -110,6 +110,39 @@ class EventService {
 // 網路失敗備用資料
 const FALLBACK_EVENTS = [
   {
+    id: 'hist_001',
+    title: '🏛️ 228 Memorial Park (臺北二二八紀念館)',
+    description: 'The flashpoint of the 1947 228 Incident. Formerly the Taiwan Radio Station, now a museum dedicated to peace and historical remembrance.',
+    location: '228 Peace Memorial Park, Zhongzheng District',
+    lat: 25.0416, lng: 121.5152, // 228紀念館精確座標
+    time: 'Tue-Sun, 10:00 AM - 5:00 PM',
+    tags: ['history', 'culture'],
+    image: 'https://images.unsplash.com/photo-1599946347371-68eb71b16afc?w=800', // 示意圖
+    active: true,
+  },
+  {
+    id: 'hist_002',
+    title: '🏛️ Dadaocheng Tianma Tea House (天馬茶房舊址)',
+    description: 'The critical location where the anti-monopoly cigarette enforcement triggered the 228 Incident on February 27, 1947.',
+    location: 'Nanjing W. Rd, Datong District',
+    lat: 25.0532, lng: 121.5103, // 天馬茶房舊址座標
+    time: 'Daily, Historical Landmark',
+    tags: ['history'],
+    image: 'https://images.unsplash.com/photo-1525811902-f2342640856e?w=800',
+    active: true,
+  },
+  {
+    id: 'hist_003',
+    title: '🏛️ Chiang Kai-shek Memorial Hall (自由廣場)',
+    description: 'A major historical site for Taipeis democratic movements, including the Wild Lily student movement and numerous social gatherings.',
+    location: 'Zhongzheng District, Taipei',
+    lat: 25.0343, lng: 121.5217, // 中正紀念堂/自由廣場座標
+    time: 'Daily, 9:00 AM - 6:00 PM',
+    tags: ['history', 'art'],
+    image: 'https://images.unsplash.com/photo-1552832230-c0197dd311b5?w=800',
+    active: true,
+  }
+  {
     id: 'evt_001',
     title: '🎬 Ximending Film District',
     description: 'The heart of Taipei youth culture. Explore retro cinemas, street performers, and unique shops.',
