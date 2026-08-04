@@ -44,6 +44,8 @@ import EventService from '../services/EventService';
 import LocationService from '../services/LocationService';
 import { useAppStore } from '../store/appStore';
 
+import WeatherWidget from '../components/WeatherWidget';
+
 const { width, height } = Dimensions.get('window');
 
 // ===== 填入你的 Token =====
@@ -710,6 +712,9 @@ function sendRN(type, data) { window.ReactNativeWebView?.postMessage(JSON.string
         allowUniversalAccessFromFileURLs
       />
 
+      {/* 🌤️ 免 API Key 的即時天氣懸浮小工具 (僅在非導航模式顯示) */}
+      {!isNavigating && <WeatherWidget />}
+
       {/* Apple Maps 頂部轉彎 Banner */}
       {isNavigating && (
         <TopNavBanner
@@ -812,6 +817,9 @@ function sendRN(type, data) { window.ReactNativeWebView?.postMessage(JSON.string
 // 整合優化後的完全體樣式表 (包含毛玻璃與 Apple Maps 元素)
 // ============================================================
 const styles = StyleSheet.create({
+  // ==========================================
+  // 1. 原本的地圖與按鈕樣式
+  // ==========================================
   container: { flex: 1, backgroundColor: '#000' },
   webView: { flex: 1, width, height },
 
@@ -860,6 +868,104 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
   },
+
+  // ==========================================
+  // 2. 新增的底部滑動卡片與車資樣式
+  // ==========================================
+  cardContainer: {
+    position: 'absolute',
+    bottom: 20,
+    left: 0,
+    width: '100%', // 改用百分比，適應各種手機螢幕寬度
+    alignItems: 'center',
+    zIndex: 100, // 確保卡片浮在最上層
+  },
+  glassPanel: {
+    width: '90%',
+    backgroundColor: 'rgba(255, 255, 255, 0.9)', // 模擬毛玻璃透視
+    borderRadius: 24,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.15,
+    shadowRadius: 20,
+    elevation: 10,
+  },
+  dragIndicator: {
+    width: 40,
+    height: 5,
+    backgroundColor: '#CCC',
+    borderRadius: 3,
+    alignSelf: 'center',
+    marginBottom: 15,
+  },
+  headerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  title: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#1A1A1A',
+  },
+  closeBtn: {
+    width: 30,
+    height: 30,
+    backgroundColor: '#F0F0F0',
+    borderRadius: 15,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  closeBtnText: {
+    fontSize: 16,
+    color: '#666',
+    fontWeight: 'bold',
+  },
+  subtitle: {
+    fontSize: 14,
+    color: '#888',
+    marginTop: 4,
+    marginBottom: 16,
+  },
+  fareBox: {
+    backgroundColor: 'rgba(240, 244, 255, 0.8)', // 淡淡的藍色底襯托
+    padding: 16,
+    borderRadius: 16,
+    marginBottom: 16,
+  },
+  fareLabel: {
+    fontSize: 14,
+    color: '#4A6572',
+    fontWeight: '600',
+    marginBottom: 8,
+  },
+  priceRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+  },
+  currency: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#1A1A1A',
+    marginRight: 4,
+  },
+  priceAmount: {
+    fontSize: 32,
+    fontWeight: '900',
+    color: '#1A1A1A',
+  },
+  actionButton: {
+    backgroundColor: '#1A1A1A',
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  actionButtonText: {
+    color: '#FFF',
+    fontSize: 16,
+    fontWeight: '700',
+  },
 });
 
 const nav = StyleSheet.create({
@@ -907,3 +1013,6 @@ const nav = StyleSheet.create({
   endBtnText:    { color: 'white', fontSize: 16, fontWeight: '700' },
   destName:      { color: '#8E8E93', fontSize: 13, paddingHorizontal: 20, paddingTop: 10, paddingBottom: 2 },
 });
+
+
+

@@ -141,7 +141,7 @@ const FALLBACK_EVENTS = [
     tags: ['history', 'art'],
     image: 'https://images.unsplash.com/photo-1552832230-c0197dd311b5?w=800',
     active: true,
-  }
+  },
   {
     id: 'evt_001',
     title: '🎬 Ximending Film District',
