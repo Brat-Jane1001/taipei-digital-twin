@@ -1,69 +1,83 @@
 /**
  * NavigationService - 路線規劃服務
  * Route planning service using Mapbox Directions API
- * 
- * 功能：
- * - 規劃步行路線
- * - 產生逐步導航指示（英文）
- * - 計算ETA和距離
  */
 
-const MAPBOX_TOKEN = '';
+// 之後我們可以把這個統一移到 .env，這裡先保留方便你測試
+const MAPBOX_TOKEN = '請貼上金鑰';
 
 class NavigationService {
   
   /**
-   * 取得步行路線
-   * @param {number} startLng - 起點經度
-   * @param {number} startLat - 起點緯度
-   * @param {number} endLng - 終點經度
-   * @param {number} endLat - 終點緯度
+   * 📍 新增：取得多停靠點路線 (行程規劃專用)
+   * @param {Array} waypoints - 經緯度陣列 [{lng, lat}, {lng, lat}, ...] (至少兩個點)
+   * @param {string} profile - 交通方式：'driving', 'walking', 'cycling' (預設 driving)
    * @returns {Object} 路線資料
    */
-  async getWalkingRoute(startLng, startLat, endLng, endLat) {
+  async getWaypointRoute(waypoints, profile = 'driving') {
     try {
-      const url = `https://api.mapbox.com/directions/v5/mapbox/walking/${startLng},${startLat};${endLng},${endLat}?steps=true&voice_instructions=true&banner_instructions=true&geometries=geojson&language=en&access_token=${MAPBOX_TOKEN}`;
+      if (!waypoints || waypoints.length < 2) {
+        throw new Error('需要至少兩個座標點才能規劃路線');
+      }
+
+      // 將座標陣列組裝成 Mapbox API 需要的格式：lng,lat;lng,lat...
+      const coordinatesString = waypoints
+        .map(wp => `${wp.lng},${wp.lat}`)
+        .join(';');
+
+      // 將 language 調整為 zh-TW，讓導航語音與文字支援繁體中文
+      const url = `https://api.mapbox.com/directions/v5/mapbox/${profile}/${coordinatesString}?steps=true&voice_instructions=true&banner_instructions=true&geometries=geojson&language=zh-TW&access_token=${MAPBOX_TOKEN}`;
       
       const response = await fetch(url);
       const data = await response.json();
 
       if (!data.routes || data.routes.length === 0) {
-        throw new Error('No route found');
+        throw new Error('找不到可行的路線');
       }
       
       const route = data.routes[0];
 
+      // 整合多個區段 (leg) 的步驟，支援多停靠點導航
+      let allSteps = [];
+      if (route.legs) {
+        route.legs.forEach(leg => {
+          const legSteps = leg.steps.map(step => ({
+            instruction: step.maneuver.instruction,
+            distance: step.distance,
+            duration: step.duration,
+            type: step.maneuver.type,
+            modifier: step.maneuver.modifier || 'straight',
+            location: step.maneuver.location,
+          }));
+          allSteps = [...allSteps, ...legSteps];
+        });
+      }
+
       return {
-        // GeoJSON格式的路線座標（用於地圖畫線）
         geometry: route.geometry,
-        
-        // 總距離（公尺）
-        distance: route.distance,
-        
-        // 預計時間（秒）
-        duration: route.duration,
-        
-        // 逐步導航指示
-        steps: route.legs[0].steps.map(step => ({
-          instruction: step.maneuver.instruction,  // 英文導航指示
-          distance: step.distance,                  // 這段距離（公尺）
-          duration: step.duration,                  // 這段時間（秒）
-          type: step.maneuver.type,                 // 動作類型（turn/depart/arrive）
-          modifier: step.maneuver.modifier,         // 方向（left/right/straight）
-          location: step.maneuver.location,         // [lng, lat]
-        })),
+        distance: route.distance, // 總距離 (公尺)
+        duration: route.duration, // 總時間 (秒)
+        steps: allSteps,          // 合併後的所有逐步導航
       };
 
     } catch (error) {
-      console.error('Navigation error:', error);
+      console.error('Waypoint Route error:', error);
       throw error;
     }
   }
 
   /**
+   * 為了相容原本的呼叫，將原本的 getWalkingRoute 導向新的多點邏輯
+   */
+  async getWalkingRoute(startLng, startLat, endLng, endLat) {
+    return this.getWaypointRoute(
+      [{ lng: startLng, lat: startLat }, { lng: endLng, lat: endLat }],
+      'walking'
+    );
+  }
+
+  /**
    * 將距離格式化為人類可讀的字串
-   * @param {number} meters - 距離（公尺）
-   * @returns {string} 格式化距離
    */
   formatDistance(meters) {
     if (meters < 1000) {
@@ -74,8 +88,6 @@ class NavigationService {
 
   /**
    * 將時間格式化為人類可讀的字串
-   * @param {number} seconds - 時間（秒）
-   * @returns {string} 格式化時間
    */
   formatDuration(seconds) {
     const minutes = Math.round(seconds / 60);
@@ -88,10 +100,7 @@ class NavigationService {
   }
 
   /**
-   * 根據maneuver type取得對應的方向圖示
-   * @param {string} type - maneuver type
-   * @param {string} modifier - 方向modifier
-   * @returns {string} 方向描述
+   * 根據 maneuver type 取得對應的方向圖示
    */
   getDirectionIcon(type, modifier) {
     if (type === 'arrive') return 'arrive';
@@ -106,10 +115,6 @@ class NavigationService {
 
   /**
    * 計算目前在路線上的進度
-   * 找出距離目前位置最近的步驟
-   * @param {Array} steps - 路線步驟陣列
-   * @param {Object} currentLocation - 目前位置 {latitude, longitude}
-   * @returns {number} 目前步驟的index
    */
   getCurrentStepIndex(steps, currentLocation) {
     let closestIndex = 0;
@@ -133,10 +138,10 @@ class NavigationService {
   }
 
   /**
-   * Haversine公式計算兩點距離（公尺）
+   * Haversine 公式計算兩點距離（公尺）
    */
   calculateDistance(lat1, lng1, lat2, lng2) {
-    const R = 6371000; // 地球半徑（公尺）
+    const R = 6371000;
     const dLat = this.toRadians(lat2 - lat1);
     const dLng = this.toRadians(lng2 - lng1);
     const a =

@@ -1,212 +1,60 @@
 /**
- * EventService - 活動資料服務
- * 從後端 API 取得真實資料
+ * EventService - 景點與活動服務 (路線 A: 真實景點預覽版)
+ * 未來可將此處的假資料替換為介接 TDX 或台北市政府 Open Data
  */
 
-import LocationService from './LocationService';
-
-// ===== 部署後換成你的 Render URL =====
-// 本機測試用：'http://你電腦的IP:3000'
-// 部署後用：'https://你的專案名稱.onrender.com'
-const API_BASE = 'https://taipei-backend-ib04.onrender.com';
-
 class EventService {
-
   async getAllEvents() {
-    try {
-      const res  = await fetch(`${API_BASE}/api/events?active=true`);
-      const json = await res.json();
-      // 如果後端有資料就用後端的，若後端是空的 []，就無縫採用你精美的本地卡片資料！
-      if (json.data && json.data.length > 0) {
-        return json.data;
+    // 模擬 API 延遲
+    await new Promise(resolve => setTimeout(resolve, 500));
+
+    return [
+      {
+        id: 'evt_001',
+        title: '🎬 西門紅樓文創市集',
+        description: '百年紅樓與文創的結合，週末限定市集，充滿在地青年的創意設計與特色手作。',
+        year: '週末限定',
+        significance: '台北西區最重要的文創聚落與歷史建築，見證了西門町的繁華與轉型。',
+        lat: 25.0422,
+        lng: 121.5069,
+        tags: ['art'],
+        image: 'https://images.unsplash.com/photo-1552993873-0aa1fcdd4c13?w=800&q=80'
+      },
+      {
+        id: 'evt_002',
+        title: '🎨 華山1914文化創意園區',
+        description: '舊酒廠改建的藝文展演空間，匯集各類展覽、獨立電影、特色咖啡廳與大片草地。',
+        year: '全天開放',
+        significance: '見證台北工業遺產轉型為藝文重鎮的指標性地標，極具歷史保存價值。',
+        lat: 25.0441,
+        lng: 121.5294,
+        tags: ['art', 'music'],
+        image: 'https://images.unsplash.com/photo-1543085601-098e945c572a?w=800&q=80'
+      },
+      {
+        id: 'evt_003',
+        title: '🍜 寧夏夜市',
+        description: '台北最受歡迎的傳統夜市之一，以多樣的古早味小吃與規劃完善的步道聞名。',
+        year: '17:00 - 01:00',
+        significance: '台北市米其林必比登推薦小吃最密集的夜市，完美展現台灣飲食文化。',
+        lat: 25.0563,
+        lng: 121.5154,
+        tags: ['food'],
+        image: 'https://images.unsplash.com/photo-1548674465-c3f25d97f26d?w=800&q=80'
+      },
+      {
+        id: 'evt_004',
+        title: '🎵 台北流行音樂中心',
+        description: '結合流行音樂與未來感建築的新地標，常舉辦大型演唱會與音樂特展。',
+        year: '依展演時間',
+        significance: '專為台灣流行音樂產業打造的國際級展演中心，建築外觀極具未來科技感。',
+        lat: 25.0526,
+        lng: 121.5978,
+        tags: ['music'],
+        image: 'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=800&q=80'
       }
-      return FALLBACK_EVENTS;
-    } catch (e) {
-      console.error('EventService.getAllEvents error:', e);
-      return FALLBACK_EVENTS; 
-    }
-  }
-
-  async getNearbyEvents(latitude, longitude, radiusKm = 10) {
-    const all = await this.getAllEvents();
-    return all
-      .map(ev => ({
-        ...ev,
-        distance: LocationService.calculateDistance(latitude, longitude, ev.lat, ev.lng),
-      }))
-      .filter(ev => ev.distance <= radiusKm)
-      .sort((a, b) => a.distance - b.distance);
-  }
-
-  async getEventsByTags(tags) {
-    const all = await this.getAllEvents();
-    return all.filter(ev => ev.tags?.some(t => tags.includes(t)));
-  }
-
-  async getEventById(id) {
-    try {
-      const res  = await fetch(`${API_BASE}/api/events/${id}`);
-      const json = await res.json();
-      return json.data || null;
-    } catch (e) {
-      const all = await this.getAllEvents();
-      return all.find(ev => ev.id === id);
-    }
-  }
-
-  async createEvent(eventData) {
-    const res  = await fetch(`${API_BASE}/api/events`, {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify(eventData),
-    });
-    return res.json();
-  }
-
-  async updateEvent(id, eventData) {
-    const res = await fetch(`${API_BASE}/api/events/${id}`, {
-      method:  'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify(eventData),
-    });
-    return res.json();
-  }
-
-  async deleteEvent(id) {
-    const res = await fetch(`${API_BASE}/api/events/${id}`, {
-      method: 'DELETE',
-    });
-    return res.json();
-  }
-
-  async toggleEvent(id) {
-    const res = await fetch(`${API_BASE}/api/events/${id}/toggle`, {
-      method: 'PATCH',
-    });
-    return res.json();
-  }
-
-  async getRecommendedEvents(userPreferences, userLocation) {
-    const all = await this.getAllEvents();
-    return all
-      .map(ev => {
-        let score = 0;
-        const matching = ev.tags?.filter(t => userPreferences.interests?.includes(t)) || [];
-        score += (matching.length / Math.max(ev.tags?.length || 1, 1)) * 0.5;
-        if (userLocation) {
-          const dist = LocationService.calculateDistance(
-            userLocation.latitude, userLocation.longitude, ev.lat, ev.lng
-          );
-          score += Math.max(0, 1 - dist / 10) * 0.3;
-        }
-        score += 0.8 * 0.2;
-        return { ...ev, recommendationScore: score };
-      })
-      .sort((a, b) => b.recommendationScore - a.recommendationScore)
-      .slice(0, 10);
+    ];
   }
 }
 
-// 網路失敗備用資料
-const FALLBACK_EVENTS = [
-  {
-    id: 'hist_001',
-    title: '🏛️ 228 Memorial Park (臺北二二八紀念館)',
-    description: 'The flashpoint of the 1947 228 Incident. Formerly the Taiwan Radio Station, now a museum dedicated to peace and historical remembrance.',
-    location: '228 Peace Memorial Park, Zhongzheng District',
-    lat: 25.0416, lng: 121.5152, // 228紀念館精確座標
-    time: 'Tue-Sun, 10:00 AM - 5:00 PM',
-    tags: ['history', 'culture'],
-    image: 'https://images.unsplash.com/photo-1599946347371-68eb71b16afc?w=800', // 示意圖
-    active: true,
-  },
-  {
-    id: 'hist_002',
-    title: '🏛️ Dadaocheng Tianma Tea House (天馬茶房舊址)',
-    description: 'The critical location where the anti-monopoly cigarette enforcement triggered the 228 Incident on February 27, 1947.',
-    location: 'Nanjing W. Rd, Datong District',
-    lat: 25.0532, lng: 121.5103, // 天馬茶房舊址座標
-    time: 'Daily, Historical Landmark',
-    tags: ['history'],
-    image: 'https://images.unsplash.com/photo-1525811902-f2342640856e?w=800',
-    active: true,
-  },
-  {
-    id: 'hist_003',
-    title: '🏛️ Chiang Kai-shek Memorial Hall (自由廣場)',
-    description: 'A major historical site for Taipeis democratic movements, including the Wild Lily student movement and numerous social gatherings.',
-    location: 'Zhongzheng District, Taipei',
-    lat: 25.0343, lng: 121.5217, // 中正紀念堂/自由廣場座標
-    time: 'Daily, 9:00 AM - 6:00 PM',
-    tags: ['history', 'art'],
-    image: 'https://images.unsplash.com/photo-1552832230-c0197dd311b5?w=800',
-    active: true,
-  }
-  {
-    id: 'evt_001',
-    title: '🎬 Ximending Film District',
-    description: 'The heart of Taipei youth culture. Explore retro cinemas, street performers, and unique shops.',
-    location: 'Red House, Ximending',
-    lat: 25.0421, lng: 121.5067,
-    time: 'Daily, Open all day',
-    tags: ['culture', 'art'],
-    image: 'https://images.unsplash.com/photo-1518998053901-5348d3961a04?w=800',
-    active: true,
-  },
-  {
-    id: 'evt_002',
-    title: '🍜 Ximending Street Food',
-    description: 'Famous stinky tofu, bubble tea, and grilled skewers along Wuchang Street.',
-    location: 'Wuchang St, Ximending',
-    lat: 25.0440, lng: 121.5050,
-    time: 'Daily, 11:00 AM - 11:00 PM',
-    tags: ['food', 'nightlife'],
-    image: 'https://images.unsplash.com/photo-1563245372-f21724e3856d?w=800',
-    active: true,
-  },
-  {
-    id: 'evt_003',
-    title: '🎨 Red House Theater',
-    description: 'Historic Japanese-era building now housing indie designers, artists, and weekend markets.',
-    location: 'Red House, Ximending',
-    lat: 25.0411, lng: 121.5065,
-    time: 'Tue-Sun, 11:00 AM - 9:30 PM',
-    tags: ['art', 'culture'],
-    image: 'https://images.unsplash.com/photo-1501386761578-eac5c94b800a?w=800',
-    active: true,
-  },
-  {
-    id: 'evt_004',
-    title: '👟 Sneaker Street',
-    description: 'The ultimate destination for sneakerheads in Taipei with limited editions.',
-    location: 'Xining S. Rd, Ximending',
-    lat: 25.0432, lng: 121.5055,
-    time: 'Daily, 12:00 PM - 9:00 PM',
-    tags: ['culture'],
-    image: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=800',
-    active: true,
-  },
-  {
-    id: 'evt_005',
-    title: '🧋 Chun Shui Tang',
-    description: 'Originator of bubble milk tea, serving premium tea and traditional Taiwanese dishes.',
-    location: 'Zhonghua Rd, Ximending',
-    lat: 25.0418, lng: 121.5088,
-    time: 'Daily, 10:00 AM - 10:00 PM',
-    tags: ['food'],
-    image: 'https://images.unsplash.com/photo-1541658016709-82535e94bc69?w=800',
-    active: true,
-  },
-  {
-    id: 'evt_006',
-    title: '🎵 Street Performance Area',
-    description: 'Watch talented local musicians, dancers, and magicians showcase their skills.',
-    location: 'Pedestrian Zone, Ximending',
-    lat: 25.0425, lng: 121.5060,
-    time: 'Weekends, 6:00 PM - 10:00 PM',
-    tags: ['music', 'culture'],
-    image: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=800',
-    active: true,
-  }
-];
 export default new EventService();

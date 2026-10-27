@@ -22,11 +22,33 @@ export const useAppStore = create((set) => ({
   // 使用者互動歷史（用於AI學習）
   swipeHistory: [],
   
+  // 📍 新增：行程清單 (Itinerary)
+  itinerary: [],
+
+  // ==========================================
   // Actions
+  // ==========================================
+  
   setEvents: (events) => set({ events }),
   
   setCurrentLocation: (location) => set({ currentLocation: location }),
   
+  // 📍 新增：行程清單管理 Actions
+  addToItinerary: (item) => set((state) => {
+    // 檢查是否已經在行程內，避免重複加入
+    if (state.itinerary.find(i => i.id === item.id)) return state;
+    return { itinerary: [...state.itinerary, item] };
+  }),
+  
+  removeFromItinerary: (itemId) => set((state) => ({
+    itinerary: state.itinerary.filter(i => i.id !== itemId)
+  })),
+  
+  reorderItinerary: (newItinerary) => set({ itinerary: newItinerary }),
+  
+  clearItinerary: () => set({ itinerary: [] }),
+
+  // 原始滑動記錄與 AI 學習功能
   addSwipeHistory: (event, direction) => set((state) => ({
     swipeHistory: [
       ...state.swipeHistory,
@@ -49,16 +71,12 @@ export const useAppStore = create((set) => ({
     },
   })),
   
-  // 根據滑動歷史學習使用者偏好
   learnFromSwipes: () => set((state) => {
     const { swipeHistory } = state;
-    
-    // 統計每個標籤的喜好度
     const tagScores = {};
     
     swipeHistory.forEach(swipe => {
       const weight = swipe.direction === 'right' ? 1 : -0.5;
-      
       swipe.tags.forEach(tag => {
         if (!tagScores[tag]) {
           tagScores[tag] = 0;
@@ -67,7 +85,6 @@ export const useAppStore = create((set) => ({
       });
     });
     
-    // 取得分數最高的標籤作為興趣
     const topTags = Object.entries(tagScores)
       .filter(([_, score]) => score > 0)
       .sort(([_, a], [__, b]) => b - a)

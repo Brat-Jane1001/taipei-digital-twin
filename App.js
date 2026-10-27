@@ -26,7 +26,7 @@ export default function App() {
         
         {/* 主程式核心功能流 */}
         <Stack.Screen name="Home" component={HomeScreen} />
-        <Stack.Screen name="Map" component={MapScreen} />
+        <Stack.Screen name="Map" component={MapScreen} options={{ gestureEnabled: false }} />
         <Stack.Screen name="Events" component={EventsScreen} />
       </Stack.Navigator>
     </NavigationContainer>

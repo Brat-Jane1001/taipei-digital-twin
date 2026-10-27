@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, Image, Dimensions, TouchableOpacity } from 'react-native';
 import Swiper from 'react-native-deck-swiper';
-import { Ionicons } from '@expo/vector-icons'; // 👈 導入專業圖示
+import { Ionicons } from '@expo/vector-icons';
+import { useAppStore } from '../store/appStore'; 
 
 const { width } = Dimensions.get('window');
 
@@ -19,25 +20,21 @@ export default function SwipeCards({ events, onSwipe, onClose }) {
     return (
       <View style={styles.card}>
         <Image source={{ uri: event.image || 'https://images.unsplash.com/photo-1494522358652-330999478432?w=800' }} style={styles.cardImage} resizeMode="cover" />
-        
         <View style={styles.cardContent}>
           <Text style={styles.cardTitle}>{event.title}</Text>
-          
           <View style={styles.infoRow}>
             <View style={styles.infoItem}>
               <Ionicons name="location" size={16} color="#4A90E2" />
-              <Text style={styles.infoText} numberOfLines={1}>{event.location}</Text>
+              <Text style={styles.infoText} numberOfLines={1}>{event.location || '台北市'}</Text>
             </View>
             <View style={styles.infoItem}>
               <Ionicons name="time" size={16} color="#FF9F0A" />
-              <Text style={styles.infoText}>{event.time}</Text>
+              <Text style={styles.infoText}>{event.year || '推薦景點'}</Text>
             </View>
           </View>
-          
           <Text style={styles.cardDescription} numberOfLines={3}>
             {event.description}
           </Text>
-          
           <View style={styles.cardTags}>
             {event.tags && event.tags.map((tag, index) => (
               <View key={index} style={styles.tag}>
@@ -45,6 +42,8 @@ export default function SwipeCards({ events, onSwipe, onClose }) {
               </View>
             ))}
           </View>
+
+
         </View>
       </View>
     );
@@ -73,20 +72,8 @@ export default function SwipeCards({ events, onSwipe, onClose }) {
           cardVerticalMargin={40}
           cardHorizontalMargin={20}
           overlayLabels={{
-            left: {
-              title: 'PASS',
-              style: {
-                label: { backgroundColor: 'transparent', borderColor: '#FF3B30', color: '#FF3B30', borderWidth: 4, borderRadius: 10, fontSize: 32, fontWeight: '800' },
-                wrapper: { flexDirection: 'column', alignItems: 'flex-end', justifyContent: 'flex-start', marginTop: 40, marginLeft: -40 }
-              }
-            },
-            right: {
-              title: 'GO!',
-              style: {
-                label: { backgroundColor: 'transparent', borderColor: '#34C759', color: '#34C759', borderWidth: 4, borderRadius: 10, fontSize: 32, fontWeight: '800' },
-                wrapper: { flexDirection: 'column', alignItems: 'flex-start', justifyContent: 'flex-start', marginTop: 40, marginLeft: 40 }
-              }
-            }
+            left: { title: 'PASS', style: { label: { backgroundColor: 'transparent', borderColor: '#FF3B30', color: '#FF3B30', borderWidth: 4, borderRadius: 10, fontSize: 32, fontWeight: '800' }, wrapper: { flexDirection: 'column', alignItems: 'flex-end', justifyContent: 'flex-start', marginTop: 40, marginLeft: -40 }}},
+            right: { title: 'GO!', style: { label: { backgroundColor: 'transparent', borderColor: '#34C759', color: '#34C759', borderWidth: 4, borderRadius: 10, fontSize: 32, fontWeight: '800' }, wrapper: { flexDirection: 'column', alignItems: 'flex-start', justifyContent: 'flex-start', marginTop: 40, marginLeft: 40 }}}
           }}
         />
       ) : (
@@ -97,21 +84,24 @@ export default function SwipeCards({ events, onSwipe, onClose }) {
 }
 
 const styles = StyleSheet.create({
-  container: { position: 'absolute', bottom: 0, left: 0, right: 0, height: '75%', backgroundColor: 'rgba(20, 20, 22, 0.98)', borderTopLeftRadius: 30, borderTopRightRadius: 30, padding: 20 },
+  container: { position: 'absolute', bottom: 0, left: 0, right: 0, height: '80%', backgroundColor: 'rgba(20, 20, 22, 0.98)', borderTopLeftRadius: 30, borderTopRightRadius: 30, padding: 20 },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, paddingHorizontal: 10 },
   headerTitle: { color: 'white', fontSize: 24, fontWeight: '800', letterSpacing: 1 },
   closeButton: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255, 255, 255, 0.15)', alignItems: 'center', justifyContent: 'center' },
-  card: { backgroundColor: 'white', borderRadius: 24, height: '82%', shadowColor: '#000', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.3, shadowRadius: 15, elevation: 10, overflow: 'hidden' },
-  cardImage: { width: '100%', height: '48%' },
-  cardContent: { padding: 24, flex: 1, backgroundColor: '#FAFAFA' },
-  cardTitle: { fontSize: 26, fontWeight: '900', color: '#1C1C1E', marginBottom: 16, letterSpacing: 0.5 },
-  infoRow: { flexDirection: 'column', gap: 10, marginBottom: 16 },
+  card: { backgroundColor: 'white', borderRadius: 24, height: '85%', shadowColor: '#000', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.3, shadowRadius: 15, elevation: 10, overflow: 'hidden' },
+  cardImage: { width: '100%', height: '42%' },
+  cardContent: { padding: 24, flex: 1, backgroundColor: '#FAFAFA', justifyContent: 'space-between' },
+  cardTitle: { fontSize: 26, fontWeight: '900', color: '#1C1C1E', marginBottom: 12, letterSpacing: 0.5 },
+  infoRow: { flexDirection: 'column', gap: 10, marginBottom: 12 },
   infoItem: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   infoText: { fontSize: 15, color: '#636366', fontWeight: '500', flex: 1 },
-  cardDescription: { fontSize: 15, color: '#48484A', lineHeight: 22, marginBottom: 20 },
-  cardTags: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  cardDescription: { fontSize: 15, color: '#48484A', lineHeight: 22, marginBottom: 12 },
+  cardTags: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16 },
   tag: { backgroundColor: '#EBF4FF', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, borderWidth: 1, borderColor: '#D1E8FF' },
   tagText: { color: '#007AFF', fontSize: 13, fontWeight: '700' },
   noEvents: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   noEventsText: { color: '#8E8E93', fontSize: 18, fontWeight: '600' },
+  addButton: { flexDirection: 'row', backgroundColor: '#4A90E2', paddingVertical: 14, borderRadius: 16, alignItems: 'center', justifyContent: 'center', shadowColor: '#4A90E2', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.4, shadowRadius: 8, elevation: 5 },
+  addedButton: { backgroundColor: '#34C759', shadowColor: '#34C759' },
+  addButtonText: { color: 'white', fontSize: 16, fontWeight: '800', marginLeft: 8, letterSpacing: 1 },
 });
