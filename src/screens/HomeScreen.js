@@ -72,6 +72,14 @@ export default function HomeScreen({ navigation }) {
           >
             <Text style={styles.eventsButtonText}>Browse Events</Text>
           </TouchableOpacity>
+
+          {/* Meetups Button */}
+          <TouchableOpacity
+            style={[styles.eventsButton, styles.meetupsButton]}
+            onPress={() => navigation.navigate('Meetups')}
+          >
+            <Text style={styles.eventsButtonText}>Join a Meetup</Text>
+          </TouchableOpacity>
         </View>
       </View>
     </ImageBackground>
@@ -162,6 +170,9 @@ const styles = StyleSheet.create({
     borderRadius: 30,
     width: '100%',
     maxWidth: 300,
+  },
+  meetupsButton: {
+    marginTop: 15,
   },
   eventsButtonText: {
     color: '#3b82f6',

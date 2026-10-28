@@ -10,6 +10,8 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import HomeScreen from './src/screens/HomeScreen';
 import MapScreen from './src/screens/MapScreen';
 import EventsScreen from './src/screens/EventsScreen';
+import MeetupsScreen from './src/screens/MeetupsScreen';
+import CreateMeetupScreen from './src/screens/CreateMeetupScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -24,6 +26,8 @@ export default function App() {
         <Stack.Screen name="Map" component={MapScreen} />
         {/* ✅ 修正：加入 Events 畫面，名稱必須與 navigation.navigate('Events') 完全一致 */}
         <Stack.Screen name="Events" component={EventsScreen} />
+        <Stack.Screen name="Meetups" component={MeetupsScreen} />
+        <Stack.Screen name="CreateMeetup" component={CreateMeetupScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );

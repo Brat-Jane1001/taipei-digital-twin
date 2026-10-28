@@ -40,6 +40,12 @@ import VoiceGuide from '../components/VoiceGuide';
 import GeofenceAlert from '../components/GeofenceAlert';
 
 import EventService from '../services/EventService';
+import MeetupService from '../services/MeetupService';
+<<<<<<< Updated upstream
+=======
+import BusService from '../services/BusService';
+
+>>>>>>> Stashed changes
 import LocationService from '../services/LocationService';
 import { useAppStore } from '../store/appStore';
 
@@ -262,7 +268,7 @@ function BottomETABar({ route, currentStepIdx, targetEvent, onEndRoute, slideAni
 // ============================================================
 // 主元件
 // ============================================================
-export default function MapScreen({ navigation }) {
+export default function MapScreen({ navigation, route }) {
   const webViewRef = useRef(null);
 
   // GPS
@@ -314,6 +320,112 @@ export default function MapScreen({ navigation }) {
     return () => clearTimeout(t);
   }, [mapReady, events]);
 
+  // ── 組隊圖釘（已核准的）：地圖就緒時載入，回到此畫面時更新 ──
+  const loadMeetupMarkers = useCallback(async () => {
+    try {
+      const meetups = await MeetupService.list();
+      sendToMap('addMeetupMarkers', { meetups });
+    } catch (e) { console.log('Meetup markers:', e.message); }
+  }, []);
+
+  useEffect(() => {
+    if (!mapReady) return;
+    loadMeetupMarkers();
+    const unsub = navigation.addListener('focus', loadMeetupMarkers);
+    return unsub;
+  }, [mapReady, loadMeetupMarkers, navigation]);
+
+  // 從組隊列表按「View on map」進來：飛到該組隊的位置
+  useEffect(() => {
+    const f = route?.params?.focus;
+    if (!f || !mapReady) return;
+    sendToMap('flyTo', { lat: f.lat, lng: f.lng, zoom: 17 });
+  }, [route?.params?.focus, mapReady]);
+
+<<<<<<< Updated upstream
+=======
+  // ── 追蹤單一路線的公車（從公車鍵盤選路線後進來）──────────
+  // 只畫這條路線的車，用 GPU 圖層，每 15 秒向後端問一次（後端有快取）
+  const [trackRoute, setTrackRoute] = useState(null);   // { city, name, from, to }
+  const [trackInfo,  setTrackInfo]  = useState({ count: null, at: null, note: '' });
+  const [tripOnMap,  setTripOnMap]  = useState(null);   // { title, stops: [{name,lat,lng}] }
+  const trackingRef = useRef(false);                    // 追蹤中就不載入全部公車的靜態圖釘
+
+  useEffect(() => {
+    const br = route?.params?.busRoute;
+    if (br) setTrackRoute(br);
+  }, [route?.params?.busRoute]);
+
+  useEffect(() => {
+    const t = route?.params?.showTrip;
+    if (t) setTripOnMap(t);
+  }, [route?.params?.showTrip]);
+
+  useEffect(() => {
+    if (!trackRoute || !mapReady) return undefined;
+    let cancelled = false;
+    let inflight  = false;
+    let first     = true;
+    let timer     = null;
+
+    // 靜態的「全部公車」圖釘有 300 個 DOM 元素，追蹤路線時先拿掉
+    trackingRef.current = true;
+    sendToMap('setBuses', { buses: [] });
+    setTrackInfo({ count: null, at: null, note: '' });
+
+    const run = async () => {
+      if (inflight || cancelled) return;
+      if (AppState.currentState !== 'active' || !navigation.isFocused()) return;   // 背景或被別的畫面蓋住就不抓
+      inflight = true;
+      try {
+        const r = await BusService.live(trackRoute.city, trackRoute.name);
+        if (cancelled) return;
+        sendToMap('setRouteBuses', { buses: r.buses, fit: first });
+        first = false;
+        setTrackInfo({ count: r.buses.length, at: new Date(), note: r.stale ? 'Positions may be a little old' : '' });
+      } catch (e) {
+        if (!cancelled) setTrackInfo(prev => ({ ...prev, note: e.message }));
+      } finally {
+        inflight = false;
+      }
+    };
+    const loop = () => {
+      timer = setTimeout(async () => { await run(); if (!cancelled) loop(); }, 15000);
+    };
+
+    run();
+    loop();
+    const appSub  = AppState.addEventListener('change', st => { if (st === 'active') run(); });
+    const focusSub = navigation.addListener('focus', run);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+      appSub.remove();
+      focusSub();
+    };
+  }, [trackRoute, mapReady, navigation]);
+
+  const stopTracking = () => {
+    trackingRef.current = false;
+    setTrackRoute(null);
+    navigation.setParams({ busRoute: undefined });
+    sendToMap('clearRouteBuses', {});
+    fetchBuses();                       // 恢復原本的公車圖釘
+  };
+
+  useEffect(() => {
+    if (!mapReady) return;
+    if (tripOnMap) sendToMap('showTrip', { stops: tripOnMap.stops });
+    else sendToMap('clearTrip', {});
+  }, [tripOnMap, mapReady]);
+
+  const closeTripOnMap = () => {
+    setTripOnMap(null);
+    navigation.setParams({ showTrip: undefined });
+  };
+
+>>>>>>> Stashed changes
   // ── 位置更新 → DOGE + 地理圍欄 + 導航步驟 ────────────
   useEffect(() => {
     if (!realLocation || !mapReady) return;
@@ -611,6 +723,9 @@ export default function MapScreen({ navigation }) {
           const ev = events.find(x => x.id === msg.data.id);
           if (ev) { setCurrentEvent(ev); setShowEventDetail(true); }
           break;
+        case 'meetupClicked':
+          navigation.navigate('Meetups', { focusId: msg.data.id });
+          break;
         case 'busStopClicked':
           speakText(`Bus stop: ${msg.data.name}`);
           break;
@@ -668,6 +783,21 @@ export default function MapScreen({ navigation }) {
     /* 活動標記 */
     .ev-pin{font-size:26px;cursor:pointer;filter:drop-shadow(0 2px 5px rgba(0,0,0,.6))}
     .ev-pin:active{transform:scale(1.2)}
+<<<<<<< Updated upstream
+=======
+
+    /* 行程編號圖釘 */
+    .tp-pin{width:26px;height:26px;border-radius:50%;background:#f59e0b;color:#1a1a2e;
+            font:700 13px sans-serif;display:flex;align-items:center;justify-content:center;
+            border:2px solid #fff;box-shadow:0 2px 5px rgba(0,0,0,.5);cursor:pointer}
+>>>>>>> Stashed changes
+
+    /* 組隊標記（只放數字，不放使用者輸入的文字）*/
+    .mt-pin{display:flex;flex-direction:column;align-items:center;cursor:pointer;
+            filter:drop-shadow(0 2px 5px rgba(0,0,0,.6))}
+    .mt-ico{font-size:26px;line-height:1}
+    .mt-cnt{background:#3b82f6;color:#fff;font-size:10px;font-weight:700;
+            padding:1px 6px;border-radius:8px;margin-top:-2px;border:1.5px solid #fff}
   </style>
 </head>
 <body>
@@ -683,7 +813,7 @@ const map = new mapboxgl.Map({
 });
 
 let dogeMk = null;
-const busMks={}, stopMks={}, mrtMks={}, evMks={};
+const busMks={}, stopMks={}, mrtMks={}, evMks={}, mtMks={};
 
 map.on('load',()=>{
   // 地形
@@ -827,6 +957,21 @@ window.handleMsg=function({action,data}){
       });
       break;
 
+    case 'addMeetupMarkers':
+      Object.values(mtMks).forEach(mk=>mk.remove());
+      Object.keys(mtMks).forEach(k=>delete mtMks[k]);
+      data.meetups.forEach(mt=>{
+        const el=document.createElement('div'); el.className='mt-pin';
+        const ico=document.createElement('span'); ico.className='mt-ico'; ico.textContent='👥';
+        const cnt=document.createElement('span'); cnt.className='mt-cnt';
+        cnt.textContent=mt.member_count+'/'+mt.max_people;
+        el.appendChild(ico); el.appendChild(cnt);
+        el.addEventListener('click',()=>sendRN('meetupClicked',{id:mt.id}));
+        mtMks[mt.id]=new mapboxgl.Marker({element:el,anchor:'bottom'})
+          .setLngLat([mt.lng,mt.lat]).addTo(map);
+      });
+      break;
+
     case 'drawRoute':
       map.getSource('route').setData(data.geometry);
       break;
@@ -893,6 +1038,24 @@ function sendRN(type,data){
             onPress={() => setShowCards(true)}
           >
             <Text style={s.btnIcon}>🎯</Text>
+          </TouchableOpacity>
+<<<<<<< Updated upstream
+=======
+
+          {/* 公車路線鍵盤 */}
+          <TouchableOpacity
+            style={[s.btn, s.btnDark]}
+            onPress={() => navigation.navigate('BusKeypad')}
+          >
+            <Text style={s.btnIcon}>🚌</Text>
+          </TouchableOpacity>
+>>>>>>> Stashed changes
+          {/* 組隊 */}
+          <TouchableOpacity
+            style={[s.btn, s.btnDark]}
+            onPress={() => navigation.navigate('Meetups')}
+          >
+            <Text style={s.btnIcon}>👥</Text>
           </TouchableOpacity>
           {/* 返回首頁 */}
           <TouchableOpacity
