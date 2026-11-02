@@ -8,6 +8,7 @@ import {
   View,
   Text,
   StyleSheet,
+  ScrollView,
   TouchableOpacity,
   Dimensions,
   ImageBackground,
@@ -23,6 +24,11 @@ export default function HomeScreen({ navigation }) {
       blurRadius={3}
     >
       <View style={styles.overlay}>
+        <ScrollView
+          style={styles.scroll}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
         <View style={styles.content}>
           {/* Logo */}
           <Text style={styles.logo}>🗺️</Text>
@@ -72,7 +78,27 @@ export default function HomeScreen({ navigation }) {
           >
             <Text style={styles.eventsButtonText}>Browse Events</Text>
           </TouchableOpacity>
+<<<<<<< Updated upstream
+=======
+
+          {/* Quick actions */}
+          <View style={styles.quickRow}>
+            <TouchableOpacity style={styles.quickBtn} onPress={() => navigation.navigate('Meetups')}>
+              <Text style={styles.quickIcon}>👥</Text>
+              <Text style={styles.quickText}>Meetups</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.quickBtn} onPress={() => navigation.navigate('Trips')}>
+              <Text style={styles.quickIcon}>🧳</Text>
+              <Text style={styles.quickText}>Trips</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.quickBtn} onPress={() => navigation.navigate('Weather')}>
+              <Text style={styles.quickIcon}>🌤️</Text>
+              <Text style={styles.quickText}>Weather</Text>
+            </TouchableOpacity>
+          </View>
+>>>>>>> Stashed changes
         </View>
+        </ScrollView>
       </View>
     </ImageBackground>
   );
@@ -163,6 +189,43 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: 300,
   },
+<<<<<<< Updated upstream
+=======
+  scroll: {
+    width: '100%',
+  },
+  scrollContent: {
+    flexGrow: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 20,
+  },
+  quickRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 15,
+    width: '100%',
+    maxWidth: 300,
+  },
+  quickBtn: {
+    flex: 1,
+    minHeight: 72,
+    borderRadius: 20,
+    borderWidth: 2,
+    borderColor: '#3b82f6',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  quickIcon: {
+    fontSize: 24,
+  },
+  quickText: {
+    color: '#3b82f6',
+    fontSize: 13,
+    fontWeight: 'bold',
+    marginTop: 2,
+  },
+>>>>>>> Stashed changes
   eventsButtonText: {
     color: '#3b82f6',
     fontSize: 18,

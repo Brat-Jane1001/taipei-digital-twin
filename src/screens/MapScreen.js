@@ -29,6 +29,7 @@ import {
   Animated,
   SafeAreaView,
   Platform,
+  AppState,
 } from 'react-native';
 import { WebView } from 'react-native-webview';
 import * as Location from 'expo-location';
@@ -40,6 +41,11 @@ import VoiceGuide from '../components/VoiceGuide';
 import GeofenceAlert from '../components/GeofenceAlert';
 
 import EventService from '../services/EventService';
+<<<<<<< Updated upstream
+=======
+import MeetupService from '../services/MeetupService';
+import BusService from '../services/BusService';
+>>>>>>> Stashed changes
 import LocationService from '../services/LocationService';
 import { useAppStore } from '../store/appStore';
 
@@ -314,6 +320,112 @@ export default function MapScreen({ navigation }) {
     return () => clearTimeout(t);
   }, [mapReady, events]);
 
+<<<<<<< Updated upstream
+=======
+  // ── 組隊圖釘（已核准的）：地圖就緒時載入，回到此畫面時更新 ──
+  const loadMeetupMarkers = useCallback(async () => {
+    try {
+      const meetups = await MeetupService.list();
+      sendToMap('addMeetupMarkers', { meetups });
+    } catch (e) { console.log('Meetup markers:', e.message); }
+  }, []);
+
+  useEffect(() => {
+    if (!mapReady) return;
+    loadMeetupMarkers();
+    const unsub = navigation.addListener('focus', loadMeetupMarkers);
+    return unsub;
+  }, [mapReady, loadMeetupMarkers, navigation]);
+
+  // 從組隊列表按「View on map」進來：飛到該組隊的位置
+  useEffect(() => {
+    const f = route?.params?.focus;
+    if (!f || !mapReady) return;
+    sendToMap('flyTo', { lat: f.lat, lng: f.lng, zoom: 17 });
+  }, [route?.params?.focus, mapReady]);
+
+  // ── 追蹤單一路線的公車（從公車鍵盤選路線後進來）──────────
+  // 只畫這條路線的車，用 GPU 圖層，每 15 秒向後端問一次（後端有快取）
+  const [trackRoute, setTrackRoute] = useState(null);   // { city, name, from, to }
+  const [trackInfo,  setTrackInfo]  = useState({ count: null, at: null, note: '' });
+  const [tripOnMap,  setTripOnMap]  = useState(null);   // { title, stops: [{name,lat,lng}] }
+  const trackingRef = useRef(false);                    // 追蹤中就不載入全部公車的靜態圖釘
+
+  useEffect(() => {
+    const br = route?.params?.busRoute;
+    if (br) setTrackRoute(br);
+  }, [route?.params?.busRoute]);
+
+  useEffect(() => {
+    const t = route?.params?.showTrip;
+    if (t) setTripOnMap(t);
+  }, [route?.params?.showTrip]);
+
+  useEffect(() => {
+    if (!trackRoute || !mapReady) return undefined;
+    let cancelled = false;
+    let inflight  = false;
+    let first     = true;
+    let timer     = null;
+
+    // 靜態的「全部公車」圖釘有 300 個 DOM 元素，追蹤路線時先拿掉
+    trackingRef.current = true;
+    sendToMap('setBuses', { buses: [] });
+    setTrackInfo({ count: null, at: null, note: '' });
+
+    const run = async () => {
+      if (inflight || cancelled) return;
+      if (AppState.currentState !== 'active' || !navigation.isFocused()) return;   // 背景或被別的畫面蓋住就不抓
+      inflight = true;
+      try {
+        const r = await BusService.live(trackRoute.city, trackRoute.name);
+        if (cancelled) return;
+        sendToMap('setRouteBuses', { buses: r.buses, fit: first });
+        first = false;
+        setTrackInfo({ count: r.buses.length, at: new Date(), note: r.stale ? 'Positions may be a little old' : '' });
+      } catch (e) {
+        if (!cancelled) setTrackInfo(prev => ({ ...prev, note: e.message }));
+      } finally {
+        inflight = false;
+      }
+    };
+    const loop = () => {
+      timer = setTimeout(async () => { await run(); if (!cancelled) loop(); }, 15000);
+    };
+
+    run();
+    loop();
+    const appSub  = AppState.addEventListener('change', st => { if (st === 'active') run(); });
+    const focusSub = navigation.addListener('focus', run);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+      appSub.remove();
+      focusSub();
+    };
+  }, [trackRoute, mapReady, navigation]);
+
+  const stopTracking = () => {
+    trackingRef.current = false;
+    setTrackRoute(null);
+    navigation.setParams({ busRoute: undefined });
+    sendToMap('clearRouteBuses', {});
+    fetchBuses();                       // 恢復原本的公車圖釘
+  };
+
+  useEffect(() => {
+    if (!mapReady) return;
+    if (tripOnMap) sendToMap('showTrip', { stops: tripOnMap.stops });
+    else sendToMap('clearTrip', {});
+  }, [tripOnMap, mapReady]);
+
+  const closeTripOnMap = () => {
+    setTripOnMap(null);
+    navigation.setParams({ showTrip: undefined });
+  };
+
+>>>>>>> Stashed changes
   // ── 位置更新 → DOGE + 地理圍欄 + 導航步驟 ────────────
   useEffect(() => {
     if (!realLocation || !mapReady) return;
@@ -375,6 +487,7 @@ export default function MapScreen({ navigation }) {
 
   // ── 公車靜態載入（只抓一次，不做移動動畫）────────────
   const fetchBuses = async () => {
+    if (trackingRef.current) return;
     try {
       setBusLoading(true);
       const token = await getTdxToken();
@@ -668,6 +781,21 @@ export default function MapScreen({ navigation }) {
     /* 活動標記 */
     .ev-pin{font-size:26px;cursor:pointer;filter:drop-shadow(0 2px 5px rgba(0,0,0,.6))}
     .ev-pin:active{transform:scale(1.2)}
+<<<<<<< Updated upstream
+=======
+
+    /* 行程編號圖釘 */
+    .tp-pin{width:26px;height:26px;border-radius:50%;background:#f59e0b;color:#1a1a2e;
+            font:700 13px sans-serif;display:flex;align-items:center;justify-content:center;
+            border:2px solid #fff;box-shadow:0 2px 5px rgba(0,0,0,.5);cursor:pointer}
+
+    /* 組隊標記（只放數字，不放使用者輸入的文字）*/
+    .mt-pin{display:flex;flex-direction:column;align-items:center;cursor:pointer;
+            filter:drop-shadow(0 2px 5px rgba(0,0,0,.6))}
+    .mt-ico{font-size:26px;line-height:1}
+    .mt-cnt{background:#3b82f6;color:#fff;font-size:10px;font-weight:700;
+            padding:1px 6px;border-radius:8px;margin-top:-2px;border:1.5px solid #fff}
+>>>>>>> Stashed changes
   </style>
 </head>
 <body>
@@ -684,6 +812,104 @@ const map = new mapboxgl.Map({
 
 let dogeMk = null;
 const busMks={}, stopMks={}, mrtMks={}, evMks={};
+
+// ── 單一路線公車：GeoJSON 圖層（GPU 繪製），位置更新時 1 秒內平滑移動 ──
+let rbReady=false, rbPrev={}, rbAnim=null;
+function arrowImage(color){
+  const c=document.createElement('canvas'); c.width=64; c.height=64;
+  const g=c.getContext('2d'); g.translate(32,32);
+  g.beginPath(); g.moveTo(0,-24); g.lineTo(17,18); g.lineTo(0,9); g.lineTo(-17,18); g.closePath();
+  g.fillStyle=color; g.fill(); g.lineWidth=4; g.strokeStyle='#ffffff'; g.stroke();
+  return g.getImageData(0,0,64,64);
+}
+function ensureBusLayer(){
+  if(rbReady) return;
+  map.addImage('bus-arrow-0',arrowImage('#3b82f6'),{pixelRatio:2});
+  map.addImage('bus-arrow-1',arrowImage('#f59e0b'),{pixelRatio:2});
+  map.addSource('route-buses',{type:'geojson',data:{type:'FeatureCollection',features:[]}});
+  map.addLayer({id:'route-buses-halo',type:'circle',source:'route-buses',slot:'top',
+    paint:{'circle-radius':16,'circle-color':'#ffffff','circle-opacity':.22}});
+  map.addLayer({id:'route-buses-layer',type:'symbol',source:'route-buses',slot:'top',
+    layout:{
+      'icon-image':['case',['==',['get','d'],1],'bus-arrow-1','bus-arrow-0'],
+      'icon-rotate':['get','h'],
+      'icon-rotation-alignment':'map',
+      'icon-pitch-alignment':'viewport',
+      'icon-allow-overlap':true,'icon-ignore-placement':true,
+      'icon-size':['interpolate',['linear'],['zoom'],11,0.55,16,0.95]
+    }});
+  map.on('click','route-buses-layer',function(e){
+    const f=e.features&&e.features[0]; if(!f) return;
+    const box=document.createElement('div'); box.style.cssText='font:12px sans-serif;padding:2px 4px';
+    const a=document.createElement('b'); a.textContent=String(f.properties.id);
+    const b=document.createElement('div'); b.textContent=f.properties.v+' km/h · '+(Number(f.properties.d)===1?'return':'outbound');
+    box.appendChild(a); box.appendChild(b);
+    new mapboxgl.Popup({offset:14,closeButton:false}).setLngLat(f.geometry.coordinates).setDOMContent(box).addTo(map);
+  });
+  rbReady=true;
+}
+function setRouteBuses(buses,fit){
+  ensureBusLayer();
+  if(rbAnim){ cancelAnimationFrame(rbAnim); rbAnim=null; }
+  const prev=rbPrev, start=performance.now(), DUR=1000, STEP=90;
+  let last=0;
+  function frame(now){
+    const t=Math.min((now-start)/DUR,1);
+    if(now-last>=STEP||t===1){
+      last=now;
+      const feats=buses.map(function(b){
+        const p=prev[b.id];
+        const lat=p?p.lat+(b.lat-p.lat)*t:b.lat;
+        const lng=p?p.lng+(b.lng-p.lng)*t:b.lng;
+        return {type:'Feature',properties:{id:b.id,d:b.d,h:b.h,v:b.v},geometry:{type:'Point',coordinates:[lng,lat]}};
+      });
+      map.getSource('route-buses').setData({type:'FeatureCollection',features:feats});
+    }
+    rbAnim = t<1 ? requestAnimationFrame(frame) : null;
+  }
+  rbAnim=requestAnimationFrame(frame);
+  const next={}; buses.forEach(function(b){ next[b.id]={lat:b.lat,lng:b.lng}; }); rbPrev=next;
+  if(fit&&buses.length){
+    const bb=new mapboxgl.LngLatBounds(); buses.forEach(function(b){ bb.extend([b.lng,b.lat]); });
+    map.fitBounds(bb,{padding:{top:130,bottom:220,left:60,right:100},maxZoom:15,duration:1200});
+  }
+}
+function clearRouteBuses(){
+  if(rbAnim){ cancelAnimationFrame(rbAnim); rbAnim=null; }
+  rbPrev={};
+  const src=map.getSource('route-buses');
+  if(src) src.setData({type:'FeatureCollection',features:[]});
+}
+
+// ── 行程：編號圖釘 + 虛線（直線連接，不是實際道路路徑）──
+let tripMks=[];
+function clearTripLayer(){
+  tripMks.forEach(function(m){ m.remove(); }); tripMks=[];
+  const src=map.getSource('trip-line');
+  if(src) src.setData({type:'Feature',geometry:{type:'LineString',coordinates:[]}});
+}
+function showTripLayer(stops){
+  clearTripLayer();
+  if(!map.getSource('trip-line')){
+    map.addSource('trip-line',{type:'geojson',data:{type:'Feature',geometry:{type:'LineString',coordinates:[]}}});
+    map.addLayer({id:'trip-line-layer',type:'line',source:'trip-line',slot:'top',
+      paint:{'line-color':'#f59e0b','line-width':4,'line-dasharray':[2,1.5],'line-opacity':.95},
+      layout:{'line-join':'round','line-cap':'round'}});
+  }
+  const coords=stops.map(function(s){ return [s.lng,s.lat]; });
+  map.getSource('trip-line').setData({type:'Feature',geometry:{type:'LineString',coordinates:coords}});
+  stops.forEach(function(s,i){
+    const el=document.createElement('div'); el.className='tp-pin'; el.textContent=String(i+1);
+    el.addEventListener('click',function(){
+      new mapboxgl.Popup({offset:18,closeButton:false}).setLngLat([s.lng,s.lat]).setText(s.name).addTo(map);
+    });
+    tripMks.push(new mapboxgl.Marker({element:el}).setLngLat([s.lng,s.lat]).addTo(map));
+  });
+  if(coords.length){
+    const bb=new mapboxgl.LngLatBounds(); coords.forEach(function(c){ bb.extend(c); });
+    map.fitBounds(bb,{padding:{top:130,bottom:220,left:60,right:100},maxZoom:16,duration:1200});
+  }
+}
 
 map.on('load',()=>{
   // 地形
@@ -827,6 +1053,29 @@ window.handleMsg=function({action,data}){
       });
       break;
 
+<<<<<<< Updated upstream
+=======
+    case 'setRouteBuses':   setRouteBuses(data.buses,data.fit); break;
+    case 'clearRouteBuses': clearRouteBuses(); break;
+    case 'showTrip':        showTripLayer(data.stops); break;
+    case 'clearTrip':       clearTripLayer(); break;
+
+    case 'addMeetupMarkers':
+      Object.values(mtMks).forEach(mk=>mk.remove());
+      Object.keys(mtMks).forEach(k=>delete mtMks[k]);
+      data.meetups.forEach(mt=>{
+        const el=document.createElement('div'); el.className='mt-pin';
+        const ico=document.createElement('span'); ico.className='mt-ico'; ico.textContent='👥';
+        const cnt=document.createElement('span'); cnt.className='mt-cnt';
+        cnt.textContent=mt.member_count+'/'+mt.max_people;
+        el.appendChild(ico); el.appendChild(cnt);
+        el.addEventListener('click',()=>sendRN('meetupClicked',{id:mt.id}));
+        mtMks[mt.id]=new mapboxgl.Marker({element:el,anchor:'bottom'})
+          .setLngLat([mt.lng,mt.lat]).addTo(map);
+      });
+      break;
+
+>>>>>>> Stashed changes
     case 'drawRoute':
       map.getSource('route').setData(data.geometry);
       break;
@@ -872,6 +1121,41 @@ function sendRN(type,data){
       {/* 語音提示（非導航時）*/}
       {!isNavigating && <VoiceGuide message={voiceMessage} />}
 
+      {/* 追蹤中的公車路線 / 顯示中的行程 */}
+      {!isNavigating && (trackRoute || tripOnMap) && (
+        <View style={s.hudStack} pointerEvents="box-none">
+          {trackRoute && (
+            <View style={s.hud}>
+              <View style={{ flex: 1 }}>
+                <Text style={s.hudTitle}>🚌 {trackRoute.name}</Text>
+                <Text style={s.hudSub} numberOfLines={2}>
+                  {trackInfo.at === null
+                    ? (trackInfo.note || 'Finding buses…')
+                    : trackInfo.count === 0
+                      ? 'No buses on this route right now'
+                      : `${trackInfo.count} bus${trackInfo.count === 1 ? '' : 'es'} running · updated ${trackInfo.at.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}`}
+                  {trackInfo.at !== null && trackInfo.note ? `\n${trackInfo.note}` : ''}
+                </Text>
+              </View>
+              <TouchableOpacity style={s.hudClose} onPress={stopTracking} accessibilityLabel="Stop tracking this route">
+                <Text style={s.hudCloseText}>✕</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+          {tripOnMap && (
+            <View style={s.hud}>
+              <View style={{ flex: 1 }}>
+                <Text style={s.hudTitle} numberOfLines={1}>🗺 {tripOnMap.title}</Text>
+                <Text style={s.hudSub}>{tripOnMap.stops.length} stop{tripOnMap.stops.length === 1 ? '' : 's'} · straight lines between stops</Text>
+              </View>
+              <TouchableOpacity style={s.hudClose} onPress={closeTripOnMap} accessibilityLabel="Hide trip">
+                <Text style={s.hudCloseText}>✕</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+        </View>
+      )}
+
       {/* 右側按鈕群組 */}
       {!isNavigating && (
         <View style={s.rightBtns}>
@@ -894,6 +1178,23 @@ function sendRN(type,data){
           >
             <Text style={s.btnIcon}>🎯</Text>
           </TouchableOpacity>
+<<<<<<< Updated upstream
+=======
+          {/* 公車路線鍵盤 */}
+          <TouchableOpacity
+            style={[s.btn, s.btnDark]}
+            onPress={() => navigation.navigate('BusKeypad')}
+          >
+            <Text style={s.btnIcon}>🚌</Text>
+          </TouchableOpacity>
+          {/* 組隊 */}
+          <TouchableOpacity
+            style={[s.btn, s.btnDark]}
+            onPress={() => navigation.navigate('Meetups')}
+          >
+            <Text style={s.btnIcon}>👥</Text>
+          </TouchableOpacity>
+>>>>>>> Stashed changes
           {/* 返回首頁 */}
           <TouchableOpacity
             style={[s.btn, s.btnDark]}
@@ -955,6 +1256,16 @@ function sendRN(type,data){
 const s = StyleSheet.create({
   container:  { flex: 1, backgroundColor: '#000' },
   webView:    { flex: 1, width, height },
+  hudStack:   { position: 'absolute', left: 16, right: 84, bottom: 36, gap: 8 },
+  hud: {
+    flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(28,28,30,.92)',
+    borderRadius: 16, paddingVertical: 10, paddingLeft: 14, paddingRight: 6,
+    borderWidth: 1, borderColor: 'rgba(255,255,255,.12)',
+  },
+  hudTitle:   { color: 'white', fontSize: 16, fontWeight: '700' },
+  hudSub:     { color: '#cbd5e0', fontSize: 12, marginTop: 2 },
+  hudClose:   { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
+  hudCloseText: { color: '#cbd5e0', fontSize: 18 },
   rightBtns:  { position: 'absolute', right: 16, bottom: 120, alignItems: 'center', gap: 12 },
   btn:        { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center',
                 shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
