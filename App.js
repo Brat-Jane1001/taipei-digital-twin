@@ -12,6 +12,9 @@ import HomeScreen from './src/screens/HomeScreen';
 import MapScreen from './src/screens/MapScreen';
 import EventsScreen from './src/screens/EventsScreen';
 
+import MeetupsScreen from './src/screens/MeetupsScreen';
+import CreateMeetupScreen from './src/screens/CreateMeetupScreen';
+
 const Stack = createNativeStackNavigator();
 
 export default function App() {
@@ -28,6 +31,10 @@ export default function App() {
         <Stack.Screen name="Home" component={HomeScreen} />
         <Stack.Screen name="Map" component={MapScreen} options={{ gestureEnabled: false }} />
         <Stack.Screen name="Events" component={EventsScreen} />
+
+        <Stack.Screen name="Meetups" component={MeetupsScreen} />
+        <Stack.Screen name="CreateMeetup" component={CreateMeetupScreen} />
+        
       </Stack.Navigator>
     </NavigationContainer>
   );

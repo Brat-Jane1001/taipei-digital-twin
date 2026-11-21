@@ -1,107 +1,243 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, Image, Dimensions, TouchableOpacity } from 'react-native';
-import Swiper from 'react-native-deck-swiper';
+import React, { useRef, useState, useEffect } from 'react';
+import { View, Text, StyleSheet, Animated, PanResponder, Dimensions, TouchableOpacity, Platform } from 'react-native';
+import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
-import { useAppStore } from '../store/appStore'; 
 
-const { width } = Dimensions.get('window');
+const { width, height } = Dimensions.get('window');
 
-export default function SwipeCards({ events, onSwipe, onClose }) {
+export default function SwipeCards({ events = [], onSwipe, onClose }) {
   const [currentIndex, setCurrentIndex] = useState(0);
+  
+  // 💡 【修正點 1】新增 Ref 來同步最新索引，打破 PanResponder 的閉包鎖死陷阱
+  const currentIndexRef = useRef(currentIndex);
+  useEffect(() => {
+    currentIndexRef.current = currentIndex;
+  }, [currentIndex]);
 
-  const handleSwipe = (cardIndex, direction) => {
-    const event = events[cardIndex];
-    const swipeDirection = direction === 1 ? 'right' : 'left';
-    if (onSwipe) onSwipe(event, swipeDirection);
+  const position = useRef(new Animated.ValueXY()).current;
+
+  // 💡 【修正點 2】將動畫與邏輯抽離成獨立函數，讓滑動與點擊按鈕都能共用
+  const forceSwipe = (direction) => {
+    const toX = direction === 'right' ? width + 100 : -width - 100;
+    Animated.timing(position, {
+      toValue: { x: toX, y: 0 },
+      duration: 250,
+      useNativeDriver: false
+    }).start(() => {
+      // 確保使用最新的 index 取出正確的景點
+      if (onSwipe) onSwipe(events[currentIndexRef.current], direction);
+      setCurrentIndex(prev => prev + 1);
+      position.setValue({ x: 0, y: 0 });
+    });
   };
 
-  const renderCard = (event) => {
-    if (!event) return null;
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onPanResponderMove: (evt, gestureState) => {
+        position.setValue({ x: gestureState.dx, y: gestureState.dy });
+      },
+      onPanResponderRelease: (evt, gestureState) => {
+        if (gestureState.dx > 120) {
+          forceSwipe('right');
+        } else if (gestureState.dx < -120) {
+          forceSwipe('left');
+        } else {
+          Animated.spring(position, { toValue: { x: 0, y: 0 }, friction: 5, useNativeDriver: false }).start();
+        }
+      }
+    })
+  ).current;
+
+  if (currentIndex >= events.length) {
     return (
-      <View style={styles.card}>
-        <Image source={{ uri: event.image || 'https://images.unsplash.com/photo-1494522358652-330999478432?w=800' }} style={styles.cardImage} resizeMode="cover" />
-        <View style={styles.cardContent}>
-          <Text style={styles.cardTitle}>{event.title}</Text>
-          <View style={styles.infoRow}>
-            <View style={styles.infoItem}>
-              <Ionicons name="location" size={16} color="#4A90E2" />
-              <Text style={styles.infoText} numberOfLines={1}>{event.location || '台北市'}</Text>
-            </View>
-            <View style={styles.infoItem}>
-              <Ionicons name="time" size={16} color="#FF9F0A" />
-              <Text style={styles.infoText}>{event.year || '推薦景點'}</Text>
-            </View>
-          </View>
-          <Text style={styles.cardDescription} numberOfLines={3}>
-            {event.description}
-          </Text>
-          <View style={styles.cardTags}>
-            {event.tags && event.tags.map((tag, index) => (
-              <View key={index} style={styles.tag}>
-                <Text style={styles.tagText}>#{tag}</Text>
-              </View>
-            ))}
-          </View>
-
-
-        </View>
+      <View style={styles.overlay}>
+        <BlurView intensity={80} tint="dark" style={styles.emptyCard}>
+          <Ionicons name="checkmark-circle-outline" size={64} color="#32D74B" style={{marginBottom: 16}} />
+          <Text style={styles.emptyText}>景點已經全部探索完畢！</Text>
+          <TouchableOpacity style={styles.closeBtn} onPress={onClose} activeOpacity={0.8}>
+            <Text style={styles.closeBtnText}>返回地圖</Text>
+          </TouchableOpacity>
+        </BlurView>
       </View>
     );
-  };
+  }
+
+  const currentEvent = events[currentIndex];
+  
+  const rotate = position.x.interpolate({ 
+    inputRange: [-width / 2, 0, width / 2], 
+    outputRange: ['-10deg', '0deg', '10deg'], 
+    extrapolate: 'clamp' 
+  });
+
+  // 💡 【新增】根據拖曳方向與距離，動態改變底下按鈕的透明度
+  const passOpacity = position.x.interpolate({ 
+    inputRange: [-100, 0, 100], 
+    outputRange: [1, 0.35, 0.35], 
+    extrapolate: 'clamp' 
+  });
+  const addOpacity = position.x.interpolate({ 
+    inputRange: [-100, 0, 100], 
+    outputRange: [0.35, 0.35, 1], 
+    extrapolate: 'clamp' 
+  });
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>探索附近活動</Text>
-        <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+    <View style={styles.overlay}>
+      <TouchableOpacity style={styles.absoluteClose} onPress={onClose} activeOpacity={0.7}>
+        <BlurView intensity={60} tint="dark" style={styles.closeBlur}>
           <Ionicons name="close" size={24} color="white" />
-        </TouchableOpacity>
-      </View>
+        </BlurView>
+      </TouchableOpacity>
       
-      {events && events.length > 0 ? (
-        <Swiper
-          cards={events}
-          renderCard={renderCard}
-          onSwipedLeft={(cardIndex) => handleSwipe(cardIndex, -1)}
-          onSwipedRight={(cardIndex) => handleSwipe(cardIndex, 1)}
-          cardIndex={currentIndex}
-          backgroundColor="transparent"
-          stackSize={3}
-          stackSeparation={14}
-          animateCardOpacity
-          cardVerticalMargin={40}
-          cardHorizontalMargin={20}
-          overlayLabels={{
-            left: { title: 'PASS', style: { label: { backgroundColor: 'transparent', borderColor: '#FF3B30', color: '#FF3B30', borderWidth: 4, borderRadius: 10, fontSize: 32, fontWeight: '800' }, wrapper: { flexDirection: 'column', alignItems: 'flex-end', justifyContent: 'flex-start', marginTop: 40, marginLeft: -40 }}},
-            right: { title: 'GO!', style: { label: { backgroundColor: 'transparent', borderColor: '#34C759', color: '#34C759', borderWidth: 4, borderRadius: 10, fontSize: 32, fontWeight: '800' }, wrapper: { flexDirection: 'column', alignItems: 'flex-start', justifyContent: 'flex-start', marginTop: 40, marginLeft: 40 }}}
-          }}
-        />
-      ) : (
-        <View style={styles.noEvents}><Text style={styles.noEventsText}>附近暫時沒有活動囉</Text></View>
-      )}
+      <Animated.View
+        {...panResponder.panHandlers}
+        style={[
+          styles.card,
+          { transform: [...position.getTranslateTransform(), { rotate }] }
+        ]}
+      >
+        <BlurView intensity={90} tint="dark" style={styles.cardBlur}>
+          <View style={styles.cardHeader}>
+            <Text style={styles.eventTitle}>{currentEvent?.title || '未知景點'}</Text>
+          </View>
+          
+          <View style={styles.cardBody}>
+             <View style={styles.placeholderImg}>
+               <Ionicons name="image-outline" size={48} color="#48484A" />
+             </View>
+             <Text style={styles.eventDesc}>
+               {currentEvent?.description || '這是一個值得探索的有趣地方。'}
+             </Text>
+          </View>
+
+          <View style={styles.hints}>
+            <TouchableOpacity onPress={() => forceSwipe('left')} activeOpacity={0.7}>
+              <Animated.View style={[styles.hintBox, { opacity: passOpacity }]}>
+                <Ionicons name="close-circle" size={28} color="#FF453A" />
+                <Text style={{color: '#FF453A', fontWeight: 'bold', fontSize: 16}}>👈 略過</Text>
+              </Animated.View>
+            </TouchableOpacity>
+            
+            <TouchableOpacity onPress={() => forceSwipe('right')} activeOpacity={0.7}>
+              <Animated.View style={[styles.hintBox, { opacity: addOpacity }]}>
+                <Text style={{color: '#32D74B', fontWeight: 'bold', fontSize: 16}}>加入 👉</Text>
+                <Ionicons name="heart-circle" size={28} color="#32D74B" />
+              </Animated.View>
+            </TouchableOpacity>
+          </View>
+        </BlurView>
+      </Animated.View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { position: 'absolute', bottom: 0, left: 0, right: 0, height: '80%', backgroundColor: 'rgba(20, 20, 22, 0.98)', borderTopLeftRadius: 30, borderTopRightRadius: 30, padding: 20 },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, paddingHorizontal: 10 },
-  headerTitle: { color: 'white', fontSize: 24, fontWeight: '800', letterSpacing: 1 },
-  closeButton: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255, 255, 255, 0.15)', alignItems: 'center', justifyContent: 'center' },
-  card: { backgroundColor: 'white', borderRadius: 24, height: '85%', shadowColor: '#000', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.3, shadowRadius: 15, elevation: 10, overflow: 'hidden' },
-  cardImage: { width: '100%', height: '42%' },
-  cardContent: { padding: 24, flex: 1, backgroundColor: '#FAFAFA', justifyContent: 'space-between' },
-  cardTitle: { fontSize: 26, fontWeight: '900', color: '#1C1C1E', marginBottom: 12, letterSpacing: 0.5 },
-  infoRow: { flexDirection: 'column', gap: 10, marginBottom: 12 },
-  infoItem: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  infoText: { fontSize: 15, color: '#636366', fontWeight: '500', flex: 1 },
-  cardDescription: { fontSize: 15, color: '#48484A', lineHeight: 22, marginBottom: 12 },
-  cardTags: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16 },
-  tag: { backgroundColor: '#EBF4FF', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, borderWidth: 1, borderColor: '#D1E8FF' },
-  tagText: { color: '#007AFF', fontSize: 13, fontWeight: '700' },
-  noEvents: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  noEventsText: { color: '#8E8E93', fontSize: 18, fontWeight: '600' },
-  addButton: { flexDirection: 'row', backgroundColor: '#4A90E2', paddingVertical: 14, borderRadius: 16, alignItems: 'center', justifyContent: 'center', shadowColor: '#4A90E2', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.4, shadowRadius: 8, elevation: 5 },
-  addedButton: { backgroundColor: '#34C759', shadowColor: '#34C759' },
-  addButtonText: { color: 'white', fontSize: 16, fontWeight: '800', marginLeft: 8, letterSpacing: 1 },
+  overlay: { 
+    ...StyleSheet.absoluteFillObject, 
+    backgroundColor: 'rgba(0,0,0,0.65)', 
+    justifyContent: 'center', 
+    alignItems: 'center', 
+    zIndex: 1000 
+  },
+  absoluteClose: { 
+    position: 'absolute', 
+    top: Platform.OS === 'ios' ? 60 : 40, 
+    right: 24, 
+    zIndex: 1001,
+    borderRadius: 20,
+    overflow: 'hidden'
+  },
+  closeBlur: {
+    padding: 8,
+  },
+  card: { 
+    width: width * 0.85, 
+    height: height * 0.65, 
+    borderRadius: 32, 
+    overflow: 'hidden', 
+    shadowColor: '#000', 
+    shadowOffset: { width: 0, height: 10 }, 
+    shadowOpacity: 0.3, 
+    shadowRadius: 20, 
+    elevation: 15 
+  },
+  cardBlur: { 
+    flex: 1, 
+    padding: 24, 
+    justifyContent: 'space-between', 
+    borderWidth: 1, 
+    borderColor: 'rgba(255,255,255,0.1)' 
+  },
+  cardHeader: { 
+    marginBottom: 16 
+  },
+  eventTitle: { 
+    color: 'white', 
+    fontSize: 28, 
+    fontWeight: '800' 
+  },
+  cardBody: { 
+    flex: 1, 
+    justifyContent: 'center' 
+  },
+  placeholderImg: { 
+    width: '100%', 
+    height: 180, 
+    backgroundColor: 'rgba(255,255,255,0.05)', 
+    borderRadius: 20, 
+    justifyContent: 'center', 
+    alignItems: 'center', 
+    marginBottom: 24 
+  },
+  eventDesc: { 
+    color: '#EBEBF5', 
+    fontSize: 16, 
+    lineHeight: 26 
+  },
+  hints: { 
+    flexDirection: 'row', 
+    justifyContent: 'space-between', 
+    paddingTop: 20, 
+    borderTopWidth: 1, 
+    borderTopColor: 'rgba(255,255,255,0.1)' 
+  },
+  hintBox: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    gap: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderRadius: 20
+  },
+  emptyCard: { 
+    width: width * 0.8, 
+    padding: 40, 
+    borderRadius: 32, 
+    alignItems: 'center', 
+    borderWidth: 1, 
+    borderColor: 'rgba(255,255,255,0.1)' 
+  },
+  emptyText: { 
+    color: 'white', 
+    fontSize: 18, 
+    fontWeight: '600', 
+    marginBottom: 24, 
+    textAlign: 'center' 
+  },
+  closeBtn: { 
+    backgroundColor: '#0A84FF', 
+    paddingHorizontal: 24, 
+    paddingVertical: 16, 
+    borderRadius: 16, 
+    width: '100%', 
+    alignItems: 'center' 
+  },
+  closeBtnText: { 
+    color: 'white', 
+    fontSize: 17, 
+    fontWeight: 'bold' 
+  }
 });

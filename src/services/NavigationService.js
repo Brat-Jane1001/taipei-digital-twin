@@ -3,8 +3,8 @@
  * Route planning service using Mapbox Directions API
  */
 
-// 之後我們可以把這個統一移到 .env，這裡先保留方便你測試
-const MAPBOX_TOKEN = '請貼上金鑰';
+
+const MAPBOX_TOKEN = '填入金鑰';
 
 class NavigationService {
   

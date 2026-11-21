@@ -1,194 +1,103 @@
-/**
- * HistoricalEventCard - 景點/活動詳情卡片 (升級版)
- */
-
 import React from 'react';
-import {
-  View,
-  Text,
-  Image,
-  StyleSheet,
-  TouchableOpacity,
-  ScrollView,
-} from 'react-native';
-import { useAppStore } from '../store/appStore'; // 引入狀態管理
+import { View, Text, StyleSheet, Dimensions, TouchableOpacity, Image, Platform, ScrollView, Linking } from 'react-native';
+import { BlurView } from 'expo-blur';
+import { Ionicons } from '@expo/vector-icons';
+
+const { width, height } = Dimensions.get('window');
 
 export default function HistoricalEventCard({ event, onClose, onNavigate }) {
-  // 取得行程清單與加入方法
-  const { itinerary, addToItinerary } = useAppStore();
-
   if (!event) return null;
 
-  // 檢查這個景點是否已經在行程中
-  const isAdded = itinerary.some(item => item.id === event.id);
-
   return (
-    <View style={styles.container}>
-      <View style={styles.card}>
-        <ScrollView bounces={false}>
-          <Image
-            source={{ uri: event.image || 'https://via.placeholder.com/400x200' }}
-            style={styles.image}
-            resizeMode="cover"
-          />
-          
-          <View style={styles.content}>
-            {/* 年份或分類標籤 */}
-            <Text style={styles.tag}>{event.year || '推薦景點'}</Text>
-            <Text style={styles.title}>{event.name || event.title}</Text>
-            
-            <Text style={styles.description}>
-              {event.description || '這是一個位於台北市的精選景點，適合安排在您的行程中。'}
-            </Text>
-            
-            {/* 景點特色或歷史意義 (如果有) */}
-            {event.significance && (
-              <View style={styles.highlightBox}>
-                <Text style={styles.highlightTitle}>✨ 景點特色</Text>
-                <Text style={styles.highlightText}>{event.significance}</Text>
-              </View>
-            )}
-            
-            {/* 動作按鈕區 */}
-            <View style={styles.actionRow}>
-              <TouchableOpacity
-                style={[styles.actionBtn, isAdded ? styles.addedBtn : styles.addBtn]}
-                onPress={() => addToItinerary(event)}
-                disabled={isAdded}
-              >
-                <Text style={[styles.btnText, isAdded && styles.addedBtnText]}>
-                  {isAdded ? '✓ 已加入行程' : '🎒 加入行程'}
-                </Text>
-              </TouchableOpacity>
+    <View style={styles.overlay}>
+      <TouchableOpacity style={styles.backgroundTap} onPress={onClose} activeOpacity={1} />
+      
+      <BlurView intensity={95} tint="dark" style={styles.bottomSheet}>
+        <View style={styles.dragIndicatorWrapper}>
+          <View style={styles.dragIndicator} />
+        </View>
 
-              <TouchableOpacity
-                style={[styles.actionBtn, styles.navBtn]}
-                onPress={() => onNavigate && onNavigate(event.lat, event.lng)}
-              >
-                <Text style={styles.btnText}>📍 直接導航</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </ScrollView>
-        
-        <TouchableOpacity style={styles.closeButton} onPress={onClose}>
-          <Text style={styles.closeText}>✕</Text>
+        <TouchableOpacity style={styles.closeBtn} onPress={onClose}>
+          <Ionicons name="close-circle" size={30} color="#8E8E93" />
         </TouchableOpacity>
-      </View>
+
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+          
+          {/* 💡 升級 1：橫向滑動的圖片畫廊 */}
+          {event.images && event.images.length > 0 ? (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.imageScroll} contentContainerStyle={{ gap: 12 }}>
+              {event.images.map((img, idx) => (
+                <Image key={idx} source={{ uri: img }} style={styles.imageItem} />
+              ))}
+            </ScrollView>
+          ) : (
+            <View style={styles.imagePlaceholder}>
+              <Ionicons name="image-outline" size={56} color="#48484A" />
+              <Text style={styles.imagePlaceholderText}>尚無景點照片</Text>
+            </View>
+          )}
+
+          <View style={styles.titleRow}>
+            <Text style={styles.title}>{event.title || event.name}</Text>
+            
+            {/* 💡 升級 2：跳轉官方網站按鈕 */}
+            {event.websiteUrl && (
+              <TouchableOpacity style={styles.websiteBtn} onPress={() => Linking.openURL(event.websiteUrl)}>
+                <Ionicons name="globe-outline" size={16} color="#0A84FF" />
+                <Text style={styles.websiteText}>官網</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+          
+          {event.tags && event.tags.length > 0 && (
+            <View style={styles.tagContainer}>
+              {event.tags.map((tag, idx) => (
+                <View key={idx} style={styles.tagBadge}>
+                  <Text style={styles.tagText}>#{tag}</Text>
+                </View>
+              ))}
+            </View>
+          )}
+
+          <Text style={styles.description}>
+            {event.description || '這個景點目前沒有詳細描述，但絕對值得一探究竟！'}
+          </Text>
+        </ScrollView>
+
+        <TouchableOpacity style={styles.navBtn} onPress={() => onNavigate(event.lat, event.lng)} activeOpacity={0.8}>
+          <Ionicons name="navigate" size={20} color="white" />
+          <Text style={styles.navBtnText}>導航至此景點</Text>
+        </TouchableOpacity>
+      </BlurView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-  },
-  card: {
-    backgroundColor: '#1E1E24',
-    borderRadius: 24,
-    maxHeight: '85%',
-    width: '100%',
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.3,
-    shadowRadius: 20,
-    elevation: 10,
-  },
-  image: {
-    width: '100%',
-    height: 220,
-  },
-  content: {
-    padding: 24,
-  },
-  tag: {
-    color: '#4A90E2',
-    fontSize: 16,
-    fontWeight: '800',
-    marginBottom: 8,
-  },
-  title: {
-    color: 'white',
-    fontSize: 26,
-    fontWeight: 'bold',
-    marginBottom: 12,
-  },
-  description: {
-    color: '#A0A0A5',
-    fontSize: 16,
-    lineHeight: 24,
-    marginBottom: 20,
-  },
-  highlightBox: {
-    backgroundColor: 'rgba(74, 144, 226, 0.1)',
-    padding: 16,
-    borderRadius: 12,
-    borderLeftWidth: 4,
-    borderLeftColor: '#4A90E2',
-    marginBottom: 24,
-  },
-  highlightTitle: {
-    color: '#4A90E2',
-    fontSize: 15,
-    fontWeight: 'bold',
-    marginBottom: 6,
-  },
-  highlightText: {
-    color: '#D1D1D6',
-    fontSize: 15,
-    lineHeight: 22,
-  },
-  actionRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: 12,
-    marginTop: 10,
-  },
-  actionBtn: {
-    flex: 1,
-    paddingVertical: 14,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  addBtn: {
-    backgroundColor: '#2C2C2E',
-    borderWidth: 1,
-    borderColor: '#4A90E2',
-  },
-  addedBtn: {
-    backgroundColor: '#4A90E2',
-  },
-  navBtn: {
-    backgroundColor: '#1A73E8',
-  },
-  btnText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  addedBtnText: {
-    color: '#FFF',
-  },
-  closeButton: {
-    position: 'absolute',
-    top: 16,
-    right: 16,
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  closeText: {
-    color: 'white',
-    fontSize: 20,
-    fontWeight: 'bold',
-  },
+  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
+  backgroundTap: { ...StyleSheet.absoluteFillObject },
+  bottomSheet: { width: width, borderTopLeftRadius: 32, borderTopRightRadius: 32, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)', maxHeight: height * 0.85 },
+  dragIndicatorWrapper: { alignItems: 'center', paddingTop: 12, paddingBottom: 8 },
+  dragIndicator: { width: 40, height: 5, borderRadius: 2.5, backgroundColor: 'rgba(255,255,255,0.3)' },
+  closeBtn: { position: 'absolute', top: 16, right: 20, zIndex: 10 },
+  scrollContent: { paddingHorizontal: 24, paddingBottom: 24 },
+  
+  // 畫廊樣式
+  imageScroll: { marginBottom: 20 },
+  imageItem: { width: width * 0.75, height: 220, borderRadius: 20, resizeMode: 'cover' },
+  imagePlaceholder: { width: '100%', height: 220, backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: 20, justifyContent: 'center', alignItems: 'center', marginBottom: 20 },
+  imagePlaceholderText: { color: '#8E8E93', marginTop: 12, fontSize: 15, fontWeight: '500' },
+  
+  // 標題與官網按鈕
+  titleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12, paddingRight: 30 },
+  title: { color: 'white', fontSize: 26, fontWeight: '800', flex: 1 },
+  websiteBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(10,132,255,0.15)', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16, borderWidth: 1, borderColor: 'rgba(10,132,255,0.3)', marginLeft: 12, marginTop: 4 },
+  websiteText: { color: '#0A84FF', fontSize: 14, fontWeight: 'bold', marginLeft: 4 },
+  
+  tagContainer: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16 },
+  tagBadge: { backgroundColor: 'rgba(10,132,255,0.15)', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, borderWidth: 1, borderColor: 'rgba(10,132,255,0.3)' },
+  tagText: { color: '#0A84FF', fontSize: 13, fontWeight: '600' },
+  description: { color: '#EBEBF5', fontSize: 16, lineHeight: 26 },
+  navBtn: { backgroundColor: '#0A84FF', marginHorizontal: 24, marginBottom: Platform.OS === 'ios' ? 34 : 24, paddingVertical: 16, borderRadius: 16, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8 },
+  navBtnText: { color: 'white', fontSize: 17, fontWeight: 'bold' }
 });
